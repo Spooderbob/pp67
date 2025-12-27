@@ -2,11 +2,10 @@ name: Scrape PrizePicks Data
 
 permissions:
   contents: write
-  actions: read
 
 on:
   schedule:
-    - cron: '0 */6 * * *'  # Every 6 hours
+    - cron: '*/5 * * * *'  # Every 5 minutes
   workflow_dispatch:
 
 jobs:
@@ -27,19 +26,18 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y google-chrome-stable
         
-    - name: Install Python dependencies
+    - name: Install dependencies
       run: |
-        echo "=== Installing dependencies ==="
         python -m pip install --upgrade pip
-        pip install -r requirements.txt --no-cache-dir --force-reinstall
+        pip install -r requirements.txt
         
-    - name: Run scraper
+    - name: Run analyzer
       run: python scraper.py
         
-    - name: Commit and push if changes
+    - name: Commit changes
       run: |
         git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        git add picks.json api_debug.json
-        git commit -m "Auto-update: PrizePicks scrape $(date)" || exit 0
+        git config --local user.name "AI Analyzer"
+        git add picks.json
+        git commit -m "Update: $(date -u +'%Y-%m-%d %H:%M UTC')" || exit 0
         git push
