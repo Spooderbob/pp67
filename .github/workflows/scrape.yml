@@ -40,6 +40,6 @@ jobs:
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git add picks.json
+        git add picks.json api_debug.json
         git commit -m "Auto-update: PrizePicks scrape $(date)" || exit 0
         git push
