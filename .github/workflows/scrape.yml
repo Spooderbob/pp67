@@ -38,6 +38,6 @@ jobs:
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "AI Analyzer"
-        git add picks.json
+        git add picks.json debug_*.json page_source.html
         git commit -m "Update: $(date -u +'%Y-%m-%d %H:%M UTC')" || exit 0
         git push
