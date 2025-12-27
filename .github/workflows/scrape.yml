@@ -1,5 +1,45 @@
-- name: Install Python dependencies
-  run: |
-    echo "=== Installing dependencies ==="
-    python -m pip install --upgrade pip
-    pip install -r requirements.txt --no-cache-dir --force-reinstall
+name: Scrape PrizePicks Data
+
+permissions:
+  contents: write
+  actions: read
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'  # Every 6 hours
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        
+    - name: Install Chrome
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y google-chrome-stable
+        
+    - name: Install Python dependencies
+      run: |
+        echo "=== Installing dependencies ==="
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt --no-cache-dir --force-reinstall
+        
+    - name: Run scraper
+      run: python scraper.py
+        
+    - name: Commit and push if changes
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add picks.json
+        git commit -m "Auto-update: PrizePicks scrape $(date)" || exit 0
+        git push
