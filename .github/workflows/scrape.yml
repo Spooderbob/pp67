@@ -1,5 +1,7 @@
 name: Scrape PrizePicks Data
-
+permissions:
+  contents: write
+  actions: read
 on:
   schedule:
     - cron: '0 */6 * * *'  # Every 6 hours
