@@ -1,6 +1,6 @@
 {
-  "timestamp": "2025-12-27T08:15:28.255657+00:00",
+  "timestamp": "2025-12-27T08:30:12.038489+00:00",
   "status": "error",
-  "error": "Message: \nStacktrace:\n#0 0x55a8d21fa19a <unknown>\n#1 0x55a8d1c77c4b <unknown>\n#2 0x55a8d1cc9318 <unknown>\n#3 0x55a8d1cc9551 <unknown>\n#4 0x55a8d1d17764 <unknown>\n#5 0x55a8d1d14bee <unknown>\n#6 0x55a8d1cbbc42 <unknown>\n#7 0x55a8d1cbc8f1 <unknown>\n#8 0x55a8d21c2f39 <unknown>\n#9 0x55a8d21c5e7d <unknown>\n#10 0x55a8d21abc81 <unknown>\n#11 0x55a8d21c6a5b <unknown>\n#12 0x55a8d2192a50 <unknown>\n#13 0x55a8d21e7aa8 <unknown>\n#14 0x55a8d21e7c79 <unknown>\n#15 0x55a8d21f94f3 <unknown>\n#16 0x7fc05fe9caa4 <unknown>\n#17 0x7fc05ff29c6c <unknown>\n",
+  "error": "Bot challenge page encountered",
   "picks": []
 }
