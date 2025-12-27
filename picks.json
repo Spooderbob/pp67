@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-12-27T12:45:51.313393+00:00",
+  "timestamp": "2025-12-27T17:03:28.978649+00:00",
   "totalPicks": 0,
   "sports": [
     "NFL",
@@ -8,5 +8,6 @@
     "NHL"
   ],
   "picks": [],
-  "status": "success"
+  "status": "success",
+  "debug": "No cards found - check page_source.html"
 }
