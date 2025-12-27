@@ -1,0 +1,10 @@
+{
+  "data": [],
+  "links": {
+    "self": "partner-api.prod01.universe.prizepicks.com/projections?league_id=21&per_page=50&single_stat=true"
+  },
+  "meta": {
+    "current_page": 1,
+    "total_pages": 1
+  }
+}
