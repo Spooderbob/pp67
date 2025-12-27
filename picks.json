@@ -1,6 +1,12 @@
 {
-  "timestamp": "2025-12-27T08:30:12.038489+00:00",
-  "status": "error",
-  "error": "Bot challenge page encountered",
-  "picks": []
+  "timestamp": "2025-12-27T08:42:49.927430+00:00",
+  "totalPicks": 0,
+  "sports": [
+    "NFL",
+    "NBA",
+    "MLB",
+    "NHL"
+  ],
+  "picks": [],
+  "status": "success"
 }
