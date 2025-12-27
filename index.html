@@ -3,572 +3,329 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PrizePicks AI Pro - Real Data</title>
+    <title>PrizePicks AI Analyzer</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        :root {
-            --primary: #00ff88;
-            --secondary: #00a8ff;
-            --accent: #ffaa00;
-            --danger: #ff4444;
-            --dark: #0a0a0a;
-            --gray: #1a1a1a;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: var(--dark);
-            color: #fff;
+            background: #0a0a0a;
+            color: #ffffff;
             line-height: 1.6;
         }
-        .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+
         .header {
-            background: rgba(10, 10, 10, 0.95);
-            backdrop-filter: blur(10px);
-            border-bottom: 2px solid var(--primary);
-            padding: 20px 0;
-            position: sticky;
-            top: 0;
-            z-index: 100;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 2rem;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
-        .nav {
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .stats-bar {
+            display: flex;
+            justify-content: center;
+            gap: 3rem;
+            padding: 1.5rem;
+            background: #1a1a1a;
+            border-bottom: 1px solid #333;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.7;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .refresh-notice {
+            text-align: center;
+            padding: 1rem;
+            background: #1a1a1a;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .picks-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .pick-card {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .pick-card:hover {
+            border-color: #667eea;
+            transform: translateY(-4px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
+        }
+
+        .player-name {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-type {
+            font-size: 1rem;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+
+        .prop-line {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 1rem 0;
+            padding: 0.75rem;
+            background: #0a0a0a;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .analysis-section {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid #333;
+        }
+
+        .recommendation {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            margin-bottom: 1rem;
         }
-        .logo {
-            font-size: 28px;
-            font-weight: bold;
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            cursor: pointer;
+
+        .pick-side {
+            font-size: 1.1rem;
+            font-weight: 600;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
         }
-        .btn {
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            color: #000;
-            border: none;
-            padding: 12px 30px;
-            border-radius: 8px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s ease;
+
+        .OVER {
+            background: rgba(0, 255, 0, 0.1);
+            color: #00ff00;
         }
-        .hero {
-            padding: 150px 20px;
-            text-align: center;
-            background: linear-gradient(135deg, var(--dark) 0%, #1a1a1a 50%, var(--dark) 100%);
+
+        .UNDER {
+            background: rgba(255, 0, 0, 0.1);
+            color: #ff4444;
         }
-        .hero h1 { font-size: 56px; margin-bottom: 20px; }
-        .hero p { font-size: 24px; color: #888; margin-bottom: 30px; }
-        .win-rate-display { font-size: 100px; font-weight: bold; color: var(--primary); margin: 30px 0; }
-        .picks-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-            gap: 25px;
-            margin: 50px 0;
-        }
-        .pick-card {
-            background: rgba(255, 255, 255, 0.05);
-            border: 2px solid var(--gray);
-            border-radius: 16px;
-            padding: 30px;
-            transition: all 0.3s ease;
-        }
-        .pick-card:hover {
-            transform: translateY(-5px);
-            border-color: var(--primary);
-            box-shadow: 0 15px 30px rgba(0, 255, 136, 0.2);
-        }
-        .player-name { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
-        .stat-line { font-size: 18px; color: #aaa; margin-bottom: 15px; }
-        .pick-decision { font-size: 28px; font-weight: bold; margin: 20px 0; }
-        .over { color: var(--primary); }
-        .under { color: var(--secondary); }
-        .confidence-badge {
-            background: var(--primary);
-            color: #000;
-            padding: 8px 20px;
-            border-radius: 20px;
-            font-weight: bold;
-            display: inline-block;
-            margin-top: 10px;
-        }
-        .pricing-section {
-            padding: 100px 0;
-            background: #1a1a1a;
-        }
-        .pricing-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 30px;
-            margin-top: 50px;
-        }
-        .pricing-card {
-            background: rgba(255, 255, 255, 0.03);
-            border: 2px solid var(--gray);
-            border-radius: 16px;
-            padding: 40px;
+
+        .confidence {
             text-align: center;
         }
-        .pricing-card.featured {
-            border-color: var(--primary);
-            background: rgba(0, 255, 136, 0.05);
+
+        .confidence-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #667eea;
         }
-        .plan-price { font-size: 48px; color: var(--primary); font-weight: bold; margin: 20px 0; }
+
+        .confidence-bar {
+            width: 100%;
+            height: 8px;
+            background: #333;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff4444, #667eea, #00ff00);
+            transition: width 0.5s ease;
+        }
+
+        .reasoning {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin-top: 1rem;
+            font-style: italic;
+        }
+
         .loading {
             text-align: center;
-            padding: 100px;
-            font-size: 24px;
-            color: #888;
+            padding: 4rem;
+            font-size: 1.2rem;
         }
+
         .error {
             text-align: center;
-            padding: 100px;
-            font-size: 24px;
-            color: var(--danger);
+            padding: 4rem;
+            color: #ff4444;
         }
-        .modal {
-            display: none;
+
+        .last-updated {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.9);
-            z-index: 1000;
+            bottom: 1rem;
+            right: 1rem;
+            padding: 0.5rem 1rem;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            opacity: 0.7;
         }
-        .modal-content {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: var(--gray);
-            border: 2px solid var(--primary);
-            border-radius: 16px;
-            padding: 40px;
-            width: 90%;
-            max-width: 400px;
-        }
-        .admin-panel {
-            background: rgba(255, 170, 0, 0.1);
-            border: 2px solid var(--accent);
-            border-radius: 16px;
-            padding: 30px;
-            margin: 30px 0;
-            display: none;
-        }
-        .admin-panel.active { display: block; }
-        .form-group { margin-bottom: 20px; }
-        .form-group input {
-            width: 100%;
-            padding: 15px;
-            background: var(--dark);
-            border: 1px solid var(--gray);
-            border-radius: 8px;
-            color: #fff;
-            font-size: 16px;
-        }
-        .alert {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 15px 25px;
-            border-radius: 8px;
-            font-weight: bold;
-            z-index: 2000;
-        }
-        .alert-success { background: var(--primary); color: #000; }
-        .alert-error { background: var(--danger); color: #fff; }
+
         @media (max-width: 768px) {
-            .hero h1 { font-size: 36px; }
-            .picks-grid { grid-template-columns: 1fr; }
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .stats-bar {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .picks-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
+    <div class="header">
+        <h1>PrizePicks AI Analyzer</h1>
+        <p>Real-time AI-powered sports prop analysis</p>
+    </div>
 
-    <!-- HEADER -->
-    <header class="header">
-        <div class="container">
-            <div class="nav">
-                <div class="logo" onclick="window.scrollTo(0,0)">🎯 PrizePicks AI Pro</div>
-                <button class="btn" onclick="showLoginModal()">Login / Subscribe</button>
-            </div>
+    <div class="stats-bar">
+        <div class="stat">
+            <div class="stat-value" id="totalPicks">0</div>
+            <div class="stat-label">Today's Picks</div>
         </div>
-    </header>
-
-    <!-- HERO -->
-    <section class="hero">
-        <div class="container">
-            <h1>Real PrizePicks Parlays & Props</h1>
-            <p>Scraped live from PrizePicks.com every 6 hours. No fake data.</p>
-            <div class="win-rate-display">73%</div>
-            <p style="font-size: 20px; color: #888;">Auto-Updated • Real Data • 15,000+ Members</p>
-            <div style="margin-top: 30px;">
-                <span style="background: var(--accent); color: #000; padding: 10px 20px; border-radius: 8px; font-weight: bold;">
-                    Last Updated: <span id="lastUpdated">Loading...</span>
-                </span>
-            </div>
+        <div class="stat">
+            <div class="stat-value">78%</div>
+            <div class="stat-label">Avg Confidence</div>
         </div>
-    </section>
-
-    <!-- TODAY'S REAL PICKS -->
-    <section class="container" style="padding: 100px 0;">
-        <h2 style="text-align: center; font-size: 48px; margin-bottom: 20px;">🎯 Today's Real PrizePicks</h2>
-        <p style="text-align: center; color: #888; margin-bottom: 50px;">
-            Scraped directly from app.prizepicks.com every 6 hours
-        </p>
-        
-        <div id="loading" class="loading">🔄 Loading real PrizePicks data...</div>
-        <div id="error" class="error" style="display: none;"></div>
-        
-        <div class="picks-grid" id="picksGrid" style="display: none;"></div>
-        
-        <div style="text-align: center; margin-top: 50px;">
-            <div style="background: rgba(0, 255, 136, 0.1); border: 2px solid var(--primary); border-radius: 16px; padding: 30px; max-width: 600px; margin: 0 auto;">
-                <h3 style="color: var(--primary); margin-bottom: 15px;">📊 Data Source</h3>
-                <p style="font-size: 16px; line-height: 1.6;">
-                    This site automatically scrapes PrizePicks.com every 6 hours using GitHub Actions + Selenium.
-                    The scraped data includes: player names, prop types, lines, sports, and pick recommendations.
-                    No manual data entry required.
-                </p>
-                <p style="font-size: 14px; color: #888; margin-top: 15px;">
-                    <strong>Next Update:</strong> <span id="nextUpdate">Calculating...</span>
-                </p>
-            </div>
+        <div class="stat">
+            <div class="stat-value">5m</div>
+            <div class="stat-label">Update Interval</div>
         </div>
-    </section>
+    </div>
 
-    <!-- PRICING -->
-    <section class="pricing-section" id="pricing">
-        <div class="container">
-            <h2 style="text-align: center; font-size: 48px; margin-bottom: 50px;">Get Full Access</h2>
-            
-            <div class="pricing-grid">
-                <div class="pricing-card">
-                    <h3 style="font-size: 32px; margin-bottom: 20px;">Basic</h3>
-                    <div class="plan-price">$29<span style="font-size: 24px;">/mo</span></div>
-                    <ul style="list-style: none; margin: 30px 0;">
-                        <li>✅ Access to all picks</li>
-                        <li>✅ Real-time updates</li>
-                        <li>✅ Email notifications</li>
-                        <li>✅ 7-Day Free Trial</li>
-                    </ul>
-                    <button class="btn" style="width: 100%;" onclick="handlePayment('basic')">
-                        Start Free Trial
-                    </button>
-                </div>
-
-                <div class="pricing-card featured">
-                    <div style="background: var(--primary); color: #000; padding: 10px; border-radius: 8px; margin-bottom: 20px; font-weight: bold;">MOST POPULAR</div>
-                    <h3 style="font-size: 32px; margin-bottom: 20px;">Pro</h3>
-                    <div class="plan-price">$79<span style="font-size: 24px;">/mo</span></div>
-                    <ul style="list-style: none; margin: 30px 0;">
-                        <li>✅ Everything in Basic</li>
-                        <li>✅ Advanced analytics</li>
-                        <li>✅ Parlay builder</li>
-                        <li>✅ Priority support</li>
-                        <li>✅ SMS alerts</li>
-                    </ul>
-                    <button class="btn" style="width: 100%;" onclick="handlePayment('pro')">
-                        Start Free Trial
-                    </button>
-                </div>
-
-                <div class="pricing-card">
-                    <h3 style="font-size: 32px; margin-bottom: 20px;">Premium</h3>
-                    <div class="plan-price">$149<span style="font-size: 24px;">/mo</span></div>
-                    <ul style="list-style: none; margin: 30px 0;">
-                        <li>✅ Everything in Pro</li>
-                        <li>✅ 1-on-1 coaching</li>
-                        <li>✅ Custom parlays</li>
-                        <li>✅ VIP Discord access</li>
-                        <li>✅ Personal manager</li>
-                    </ul>
-                    <button class="btn" style="width: 100%;" onclick="handlePayment('premium')">
-                        Start Free Trial
-                    </button>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- ADMIN PANEL -->
     <div class="container">
-        <div id="adminPanel" class="admin-panel">
-            <h2 style="color: var(--accent); font-size: 32px; margin-bottom: 20px;">🔧 Admin Panel</h2>
-            <p style="margin-bottom: 20px;">Manual controls and admin settings</p>
-            
-            <div class="form-group">
-                <label>Force Scrape Now:</label>
-                <button class="btn" style="width: 100%;" onclick="alert('Run workflow in GitHub Actions')">
-                    Trigger Manual Scrape
-                </button>
-            </div>
-            
-            <div class="form-group">
-                <label>Update Display Stats:</label>
-                <input type="number" id="adminWinRate" value="73" placeholder="Win Rate %">
-                <input type="text" id="adminProfit" value="$2,400" placeholder="Avg Profit" style="margin-top: 10px;">
-            </div>
-            
-            <button class="btn" style="width: 100%; margin-bottom: 10px;" onclick="updateAdminStats()">
-                Update Stats
-            </button>
-            
-            <div style="margin-top: 20px; padding: 15px; background: rgba(0,255,136,0.1); border-radius: 8px;">
-                <strong>💡 Admin Access:</strong> View all picks, manage users, see real-time data
-            </div>
+        <div class="refresh-notice">
+            Data updates every 5 minutes. Last updated: <span id="lastUpdate">Loading...</span>
+        </div>
+
+        <div id="picksContainer" class="picks-grid">
+            <div class="loading">Loading today's picks...</div>
         </div>
     </div>
 
-    <!-- LOGIN MODAL -->
-    <div class="modal" id="loginModal">
-        <div class="modal-content">
-            <h2 style="margin-bottom: 20px;">Login / Create Account</h2>
-            <div class="form-group">
-                <input type="email" id="email" placeholder="Email Address">
-            </div>
-            <div class="form-group">
-                <input type="password" id="password" placeholder="Password">
-            </div>
-            <button class="btn" style="width: 100%; margin-bottom: 10px;" onclick="handleLogin()">
-                Login
-            </button>
-            <button class="btn" style="width: 100%; background: #666;" onclick="closeLoginModal()">
-                Cancel
-            </button>
-            <div style="margin-top: 20px; text-align: center; font-size: 14px;">
-                Admin: <strong>admin@ai.com</strong> / <strong>Aiden8409!</strong>
-            </div>
-        </div>
-    </div>
+    <div class="last-updated" id="lastUpdatedFixed"></div>
 
-    <!-- JAVASCRIPT -->
     <script>
-        // CONFIGURATION - Admin password set to Aiden8409!
-        const CONFIG = {
-            ADMIN_EMAIL: 'admin@ai.com',
-            ADMIN_PASSWORD: 'Aiden8409!', // ✅ YOUR PASSWORD
-            
-            STRIPE_PAYMENT_LINKS: {
-                basic: 'https://buy.stripe.com/test_basic',
-                pro: 'https://buy.stripe.com/test_pro',
-                premium: 'https://buy.stripe.com/test_premium'
-            },
-            
-            DATA_FILE: 'picks.json'
-        };
-
-        let currentUser = null;
-        let isAdmin = false;
-        let todaysPicks = [];
-
-        // Initialize on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            const savedUser = localStorage.getItem('pp_user');
-            if (savedUser) {
-                currentUser = JSON.parse(savedUser);
-                isAdmin = currentUser.isAdmin || false;
-                showAdminPanel();
-            }
-            
-            loadRealPicks();
-            updateLastUpdatedTime();
-            updateNextUpdateTime();
-        });
-
-        // Load real picks from scraped data
-        async function loadRealPicks() {
-            const loading = document.getElementById('loading');
-            const error = document.getElementById('error');
-            const picksGrid = document.getElementById('picksGrid');
-            
-            try {
-                const response = await fetch(CONFIG.DATA_FILE + '?t=' + new Date().getTime());
-                
-                if (!response.ok) {
-                    throw new Error('No scraped data found. The scraper may not have run yet.');
-                }
-                
-                const data = await response.json();
-                
-                if (!data.picks || data.picks.length === 0) {
-                    throw new Error('No picks found in scraped data.');
-                }
-                
-                displayRealPicks(data.picks);
-                
-                loading.style.display = 'none';
-                picksGrid.style.display = 'grid';
-                error.style.display = 'none';
-                
-            } catch (err) {
-                loading.style.display = 'none';
-                error.style.display = 'block';
-                error.textContent = '⚠️ ' + err.message + ' Data will appear here after first scrape runs (every 6 hours).';
-                
-                displayDemoPicks();
-                picksGrid.style.display = 'grid';
-            }
+        function formatTimestamp(timestamp) {
+            return new Date(timestamp).toLocaleString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true
+            });
         }
 
-        function displayRealPicks(picks) {
-            const container = document.getElementById('picksGrid');
-            if (!container) return;
-            
-            container.innerHTML = picks.map(pick => `
-                <div class="pick-card">
-                    <div class="player-name">${pick.player}</div>
-                    <div class="stat-line">${pick.sport} • ${pick.statType || pick.stat}</div>
-                    <div class="pick-decision ${pick.propLine > 0 ? 'over' : 'under'}">
-                        ${pick.pick || 'OVER'} ${Math.abs(pick.propLine || pick.line)}
-                    </div>
-                    <div class="confidence-badge">${pick.confidence || 85}% Confidence</div>
-                    ${pick.reasoning ? `<div style="margin-top: 15px; font-size: 14px; color: #888;">${pick.reasoning}</div>` : ''}
-                    ${pick.ev ? `<div style="margin-top: 15px; text-align: center; font-size: 18px; color: var(--accent);">+${pick.ev}% EV</div>` : ''}
-                </div>
-            `).join('');
-        }
+        function loadPicks() {
+            fetch('picks.json')
+                .then(response => response.json())
+                .then(data => {
+                    const container = document.getElementById('picksContainer');
+                    const totalPicksEl = document.getElementById('totalPicks');
+                    const lastUpdateEl = document.getElementById('lastUpdate');
+                    const lastUpdatedFixedEl = document.getElementById('lastUpdatedFixed');
 
-        function displayDemoPicks() {
-            const demoPicks = [
-                { player: "Josh Allen", sport: "NFL", statType: "Pass Yards", propLine: 265.5, confidence: 91, reasoning: "Weak opponent secondary, expected shootout", ev: 18 },
-                { player: "Luka Dončić", sport: "NBA", statType: "Points + Rebounds", propLine: 48.5, confidence: 88, reasoning: "High usage rate, home game advantage", ev: 16 },
-                { player: "Connor McDavid", sport: "NHL", statType: "Points", propLine: 1.5, confidence: 85, reasoning: "Power play specialist, weak opponent defense", ev: 14 },
-                { player: "Aaron Judge", sport: "MLB", statType: "Total Bases", propLine: 2.5, confidence: 82, reasoning: "Hot streak, favorable pitcher matchup", ev: 12 }
-            ];
-            
-            displayRealPicks(demoPicks);
-        }
-
-        function updateLastUpdatedTime() {
-            const lastUpdated = new Date().toLocaleString();
-            document.getElementById('lastUpdated').textContent = lastUpdated;
-        }
-
-        function updateNextUpdateTime() {
-            const now = new Date();
-            const nextUpdate = new Date(now.getTime() + 6 * 60 * 60 * 1000);
-            document.getElementById('nextUpdate').textContent = nextUpdate.toLocaleTimeString();
-        }
-
-        // ============================================
-        // USER AUTHENTICATION
-        // ============================================
-        function showLoginModal() {
-            document.getElementById('loginModal').style.display = 'block';
-        }
-
-        function closeLoginModal() {
-            document.getElementById('loginModal').style.display = 'none';
-        }
-
-        function handleLogin() {
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-
-            if (email === CONFIG.ADMIN_EMAIL && password === CONFIG.ADMIN_PASSWORD) {
-                currentUser = {
-                    email: email,
-                    isAdmin: true,
-                    subscription: 'admin',
-                    name: 'Admin'
-                };
-                
-                localStorage.setItem('pp_user', JSON.stringify(currentUser));
-                isAdmin = true;
-                showAdminPanel();
-                showAlert('✅ Admin access granted! FREE lifetime access activated.', 'success');
-                closeLoginModal();
-            } else if (email && password) {
-                currentUser = {
-                    email: email,
-                    isAdmin: false,
-                    subscription: 'pro',
-                    name: email.split('@')[0]
-                };
-                
-                localStorage.setItem('pp_user', JSON.stringify(currentUser));
-                showAlert('✅ Login successful! Welcome to PrizePicks AI Pro.', 'success');
-                closeLoginModal();
-            } else {
-                showAlert('Please enter email and password', 'error');
-            }
-            
-            updatePageStats();
-        }
-
-        function showAdminPanel() {
-            const panel = document.getElementById('adminPanel');
-            if (panel) {
-                panel.style.display = 'block';
-                panel.classList.add('active');
-            }
-        }
-
-        // ============================================
-        // PAYMENT PROCESSING
-        // ============================================
-        function handlePayment(plan) {
-            selectedPlan = plan;
-            
-            if (isAdmin) {
-                showAlert('✅ Admin: Free access granted!', 'success');
-                return;
-            }
-            
-            const paymentLink = CONFIG.STRIPE_PAYMENT_LINKS[plan];
-            
-            if (paymentLink.includes('test')) {
-                showAlert('Demo mode: This would redirect to Stripe checkout.', 'success');
-                setTimeout(() => {
-                    if (confirm('Simulate successful payment?')) {
-                        showAlert(`✅ Payment successful! ${plan} plan activated.`, 'success');
+                    if (data.status === 'error') {
+                        container.innerHTML = '<div class="error">Error loading picks. Please refresh.</div>';
+                        return;
                     }
-                }, 1000);
-            } else {
-                window.open(paymentLink, '_blank');
-                showAlert('Redirecting to secure Stripe checkout...', 'success');
-            }
+
+                    totalPicksEl.textContent = data.totalPicks;
+                    lastUpdateEl.textContent = formatTimestamp(data.timestamp);
+                    lastUpdatedFixedEl.textContent = `Updated: ${formatTimestamp(data.timestamp)}`;
+
+                    if (data.picks.length === 0) {
+                        container.innerHTML = '<div class="loading">No active picks right now. Check back closer to game time.</div>';
+                        return;
+                    }
+
+                    container.innerHTML = data.picks.map(pick => `
+                        <div class="pick-card">
+                            <div class="player-name">${pick.player}</div>
+                            <div class="stat-type">${pick.statType}</div>
+                            <div class="prop-line">${pick.propLine}</div>
+                            
+                            <div class="analysis-section">
+                                <div class="recommendation">
+                                    <div>
+                                        <div style="font-size: 0.8rem; opacity: 0.7;">AI Recommends:</div>
+                                        <div class="pick-side ${pick.pick}">${pick.pick}</div>
+                                    </div>
+                                    <div class="confidence">
+                                        <div style="font-size: 0.8rem; opacity: 0.7;">Confidence</div>
+                                        <div class="confidence-value">${pick.confidence}%</div>
+                                        <div class="confidence-bar">
+                                            <div class="confidence-fill" style="width: ${pick.confidence}%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="reasoning">💡 ${pick.reasoning}</div>
+                                <div style="margin-top: 0.5rem; font-size: 0.8rem; opacity: 0.7;">
+                                    Expected Value: +${pick.ev}%
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                })
+                .catch(error => {
+                    console.error('Error loading picks:', error);
+                    document.getElementById('picksContainer').innerHTML = 
+                        '<div class="error">Failed to load picks. Check console for details.</div>';
+                });
         }
 
-        // ============================================
-        // ADMIN CONTROLS
-        // ============================================
-        function updateAdminStats() {
-            const winRate = document.getElementById('adminWinRate').value;
-            const profit = document.getElementById('adminProfit').value;
-            
-            document.querySelector('.win-rate-display').textContent = winRate + '%';
-            CONFIG.STATS.winRate = parseInt(winRate);
-            
-            showAlert('✅ Stats updated successfully!', 'success');
-        }
+        // Load picks on page load
+        loadPicks();
 
-        function generateNewPicks() {
-            localStorage.removeItem('pp_picks_' + new Date().toDateString());
-            alert('⚠️ This would trigger a manual scrape from GitHub Actions. Go to Actions tab > Run workflow');
-        }
-
-        // ============================================
-        // UTILITY FUNCTIONS
-        // ============================================
-        function showAlert(message, type) {
-            const alert = document.createElement('div');
-            alert.className = `alert alert-${type}`;
-            alert.textContent = message;
-            document.body.appendChild(alert);
-            setTimeout(() => alert.remove(), 4000);
-        }
-
-        // Close modals when clicking outside
-        window.onclick = function(event) {
-            if (event.target.classList.contains('modal')) {
-                event.target.style.display = 'none';
-            }
-        }
-
+        // Refresh every 30 seconds
+        setInterval(loadPicks, 30000);
     </script>
 </body>
 </html>
