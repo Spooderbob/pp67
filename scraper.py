@@ -23,23 +23,36 @@ def scrape_prizepicks():
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--window-size=1920,1080")
-    chrome_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+    chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+    chrome_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+    
+    # Experimental options to remove automation detection
+    chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    chrome_options.add_experimental_option('useAutomationExtension', False)
     
     driver = webdriver.Chrome(options=chrome_options)
     
+    # Execute script to disable webdriver detection
+    driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+    
     try:
-        driver.get("https://app.prizepicks.com/")
-        wait = WebDriverWait(driver, 15)
+        # Remove trailing space from URL
+        driver.get("https://app.prizepicks.com")
+        wait = WebDriverWait(driver, 20)  # Increased timeout
+        
+        # Wait longer for page load
+        time.sleep(5)
         
         try:
             close_button = wait.until(EC.element_to_be_clickable((By.CLASS_NAME, "close")))
             close_button.click()
-            time.sleep(1)
+            time.sleep(2)
         except:
             pass
         
+        # Wait for projection cards with longer timeout
         wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "[data-testid='projection-card']")))
-        time.sleep(3)
+        time.sleep(5)  # Extra time for data to load
         
         projection_cards = driver.find_elements(By.CSS_SELECTOR, "[data-testid='projection-card']")
         
