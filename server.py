@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """
-StubFlip web dashboard server.
-Run:  python server.py
-Then open http://localhost:5000 in your browser.
+StubFlip dashboard server.
+
+Usage:
+    python server.py
+    → open http://localhost:5000
 """
 
 import json
@@ -11,37 +13,20 @@ import threading
 import time
 from datetime import datetime
 from pathlib import Path
+from typing import Optional
 
 from flask import Flask, jsonify, request, send_from_directory
+
 from bot import StubBot
 
 app = Flask(__name__, static_folder=".")
 
 CONFIG_FILE = Path("config.json")
 
-# Shared bot state (read by the dashboard via /api/stats)
-bot_state: dict = {
-    "running":        False,
-    "status":         "stopped",   # stopped | running | error
-    "stubsEarned":    0,
-    "tradesCompleted": 0,
-    "startTime":      None,
-    "log":            [],
-    "tradeHistory":   [],
-}
-
-_bot:    StubBot | None  = None
-_thread: threading.Thread | None = None
-_lock   = threading.Lock()
-
-# ---------------------------------------------------------------------------
-# Config helpers
-# ---------------------------------------------------------------------------
-
 DEFAULT_CONFIG = {
-    "profitMargin":      500,
-    "activeHoursStart":  8,
-    "activeHoursEnd":    23,
+    "profitMargin":       500,
+    "activeHoursStart":   8,
+    "activeHoursEnd":     23,
     "cardTypes": {
         "diamondEquipment": True,
         "liveSeries":       True,
@@ -49,8 +34,30 @@ DEFAULT_CONFIG = {
     },
     "delayBetweenTrades": 30,
     "maxBudget":          100000,
+    "coords":             {},
 }
 
+# ---------------------------------------------------------------------------
+# Shared bot state — polled by the dashboard every 3 seconds
+# ---------------------------------------------------------------------------
+bot_state: dict = {
+    "running":         False,
+    "status":          "stopped",   # stopped | running | error
+    "stubsEarned":     0,
+    "tradesCompleted": 0,
+    "startTime":       None,
+    "log":             [],
+    "tradeHistory":    [],
+}
+
+_bot:    Optional[StubBot]           = None
+_thread: Optional[threading.Thread] = None
+_lock   = threading.Lock()
+
+
+# ---------------------------------------------------------------------------
+# Config helpers
+# ---------------------------------------------------------------------------
 
 def load_config() -> dict:
     if CONFIG_FILE.exists():
@@ -58,7 +65,7 @@ def load_config() -> dict:
             return json.loads(CONFIG_FILE.read_text())
         except Exception:
             pass
-    return DEFAULT_CONFIG.copy()
+    return dict(DEFAULT_CONFIG)
 
 
 def save_config(cfg: dict):
@@ -91,7 +98,7 @@ def get_config():
 def update_config():
     data = request.get_json(force=True)
     if not isinstance(data, dict):
-        return jsonify({"success": False, "message": "Invalid JSON"}), 400
+        return jsonify({"success": False, "message": "Bad JSON"}), 400
     save_config(data)
     return jsonify({"success": True})
 
@@ -115,8 +122,8 @@ def start_bot():
             "tradeHistory":    [],
         })
 
-        _bot = StubBot(config, bot_state)
-        _thread = threading.Thread(target=_run_bot, daemon=True)
+        _bot    = StubBot(config, bot_state)
+        _thread = threading.Thread(target=_bot_runner, daemon=True)
         _thread.start()
 
     return jsonify({"success": True})
@@ -129,35 +136,37 @@ def stop_bot():
     with _lock:
         if _bot:
             _bot.stop()
-        bot_state["running"] = False
-        bot_state["status"]  = "stopped"
+        bot_state["running"]   = False
+        bot_state["status"]    = "stopped"
         bot_state["startTime"] = None
 
     return jsonify({"success": True})
 
 
 # ---------------------------------------------------------------------------
-# Bot thread wrapper
+# Bot thread
 # ---------------------------------------------------------------------------
 
-def _run_bot():
+def _bot_runner():
     global _bot
     try:
         _bot.run()
-    except Exception as e:
+    except Exception as exc:
         bot_state["log"].insert(0, {
             "time":  datetime.now().strftime("%H:%M:%S"),
-            "msg":   f"Fatal error: {e}",
+            "msg":   f"Fatal error: {exc}",
             "level": "error",
         })
+        bot_state["status"] = "error"
     finally:
-        bot_state["running"] = False
-        bot_state["status"]  = "stopped"
+        bot_state["running"]   = False
         bot_state["startTime"] = None
+        if bot_state["status"] == "running":
+            bot_state["status"] = "stopped"
 
 
 # ---------------------------------------------------------------------------
-# Entry point
+# Startup
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
@@ -165,5 +174,8 @@ if __name__ == "__main__":
         save_config(DEFAULT_CONFIG)
         print("Created default config.json")
 
-    print("StubFlip dashboard → http://localhost:5000")
+    print()
+    print("  StubFlip is running.")
+    print("  Open http://localhost:5000 in your browser.")
+    print()
     app.run(host="0.0.0.0", port=5000, debug=False, use_reloader=False)

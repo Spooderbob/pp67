@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 """
-StubFlip Bot - Free MLB The Show 26 stub farming via ADB automation.
+StubFlip Bot — Free MLB The Show 26 stub-farming via ADB.
 
-Setup requirements:
-  1. Android emulator (LDPlayer / BlueStacks / NoxPlayer) running at 1920x1080 280 DPI
-  2. MLB The Show Companion App installed and logged in
-  3. ADB enabled on the emulator (usually port 5555)
-  4. `adb devices` should list your emulator
+Requirements
+------------
+* Android emulator (LDPlayer 9 recommended) at 1920x1080 / 280 DPI
+* MLB The Show Companion App installed and logged in on the emulator
+* adb in PATH  (Android SDK Platform Tools)
+* tesseract in PATH  (for OCR price reading)
+* pip install flask pillow pytesseract
 
-The bot navigates the Companion App marketplace, reads buy-now and best-sell
-prices with OCR, and executes flips when the margin exceeds your threshold.
+Run calibrate.py once to capture a screenshot and tune the coordinate
+regions in config.json before the first real run.
 """
 
 import io
@@ -19,58 +21,61 @@ import subprocess
 import time
 from datetime import datetime
 from pathlib import Path
+from typing import Dict, List, Optional, Tuple
 
+# PIL is required; pytesseract is required for OCR
 try:
     from PIL import Image, ImageEnhance, ImageFilter
+    PIL_OK = True
+except ImportError:
+    PIL_OK = False
+
+try:
     import pytesseract
     TESSERACT_OK = True
 except ImportError:
     TESSERACT_OK = False
 
-
 # ---------------------------------------------------------------------------
-# Screen coordinate map (1920 × 1080, 280 DPI, Samsung Galaxy S20 FE preset)
-# Override these in config.json under "coords" if your layout differs.
+# Default screen-coordinate map
+# Calibrated for 1920×1080 / 280 DPI / Samsung Galaxy S20 FE preset in
+# LDPlayer 9.  Override any key in config.json under "coords".
 # ---------------------------------------------------------------------------
-DEFAULT_COORDS = {
-    # Bottom nav bar
+DEFAULT_COORDS: Dict[str, Tuple] = {
+    # Bottom nav bar of the Companion App
     "nav_diamond_dynasty": (960, 1020),
     "nav_marketplace":     (760, 1020),
 
     # Marketplace toolbar
     "search_bar":          (540, 160),
-    "filter_button":       (1800, 160),
-    "sort_button":         (1650, 160),
 
-    # Listing card regions (first result row)
+    # First search-result card
     "first_card_tap":      (540, 380),
 
-    # Detail screen price regions (x1,y1,x2,y2 crop boxes)
+    # Detail screen — OCR crop boxes  (x1, y1, x2, y2)
     "buy_now_region":      (1050, 580, 1880, 650),
     "best_sell_region":    (1050, 660, 1880, 730),
 
     # Detail screen action buttons
     "buy_now_button":      (1460, 840),
-    "sell_button":         (1460, 920),
 
-    # Confirm / OK overlays
+    # Confirm / OK overlay button
     "confirm_button":      (960, 780),
-    "ok_button":           (960, 780),
 
-    # Price input field (when listing for sale)
+    # Price input field when placing an order
     "price_input":         (960, 550),
-
-    # Back / close
-    "back_button":         (60, 60),
-    "close_overlay":       (960, 200),
 }
 
-# MLB The Show 26 Companion App package (update if the app store changes it)
-APP_PACKAGE = "com.scea.mlbts.companion"
+# MLB The Show 26 Companion App package/activity
+# Update this if Sony changes the package name.
+APP_PACKAGE  = "com.scea.mlbts.companion"
 APP_ACTIVITY = ".ui.MainActivity"
 
-# Diamond Dynasty takes a 10 % sales tax on stubs
+# DD marketplace sales tax
 SALES_TAX = 0.10
+
+# Emulator ADB ports to try (LDPlayer, BlueStacks, NoxPlayer, MEmu)
+EMULATOR_PORTS = (5555, 5554, 21503, 62001, 7555)
 
 
 class ADBError(Exception):
@@ -79,16 +84,16 @@ class ADBError(Exception):
 
 class StubBot:
     def __init__(self, config: dict, stats: dict):
-        self.config = config
-        self.stats = stats
+        self.config  = config
+        self.stats   = stats
         self.running = False
-        self.device: str | None = None
+        self.device: Optional[str] = None
 
-        # Allow coords overrides in config
-        self.coords = {**DEFAULT_COORDS, **config.get("coords", {})}
-
-        # Trade history kept in memory
-        self.trade_log: list[dict] = []
+        # Merge caller-supplied coordinate overrides
+        raw = {**DEFAULT_COORDS}
+        for k, v in config.get("coords", {}).items():
+            raw[k] = tuple(v) if isinstance(v, list) else v
+        self.coords = raw
 
     # ------------------------------------------------------------------
     # Logging
@@ -96,8 +101,8 @@ class StubBot:
 
     def log(self, msg: str, level: str = "info"):
         entry = {
-            "time": datetime.now().strftime("%H:%M:%S"),
-            "msg": msg,
+            "time":  datetime.now().strftime("%H:%M:%S"),
+            "msg":   msg,
             "level": level,
         }
         self.stats["log"].insert(0, entry)
@@ -108,38 +113,39 @@ class StubBot:
     # ADB primitives
     # ------------------------------------------------------------------
 
-    def _run(self, *args, timeout: int = 15) -> str:
+    def _adb(self, *args: str, timeout: int = 15) -> str:
         cmd = ["adb"]
         if self.device:
             cmd += ["-s", self.device]
         cmd += list(args)
         try:
-            r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+            r = subprocess.run(
+                cmd, capture_output=True, text=True, timeout=timeout
+            )
             return r.stdout.strip()
         except subprocess.TimeoutExpired:
-            raise ADBError(f"ADB command timed out: {' '.join(args)}")
+            raise ADBError(f"ADB timed out: {' '.join(args)}")
         except FileNotFoundError:
             raise ADBError(
-                "adb not found. Install Android SDK Platform Tools and add to PATH."
+                "adb not found — install Android SDK Platform Tools and add to PATH"
             )
 
     def connect(self) -> bool:
-        """Find and attach to a running emulator or USB device."""
-        out = self._run("devices")
-        lines = [l for l in out.splitlines()[1:] if l.strip()]
-        for line in lines:
+        """Attach to a running emulator or USB-connected device."""
+        out = self._adb("devices")
+        for line in out.splitlines()[1:]:
             parts = line.split()
             if len(parts) >= 2 and parts[1] == "device":
                 self.device = parts[0]
                 self.log(f"Connected to {self.device}")
                 return True
 
-        # Try explicit LDPlayer / BlueStacks default ports
-        for port in (5555, 5554, 21503, 62001):
+        # Auto-connect to common emulator TCP ports
+        for port in EMULATOR_PORTS:
             try:
-                self._run("connect", f"127.0.0.1:{port}", timeout=5)
-                out = self._run("devices")
-                for line in out.splitlines()[1:]:
+                self._adb("connect", f"127.0.0.1:{port}", timeout=5)
+                out2 = self._adb("devices")
+                for line in out2.splitlines()[1:]:
                     if f"127.0.0.1:{port}" in line and "device" in line:
                         self.device = f"127.0.0.1:{port}"
                         self.log(f"Connected to emulator on port {port}")
@@ -148,114 +154,115 @@ class StubBot:
                 pass
 
         self.log(
-            "No device found. Start your Android emulator and enable ADB.", "error"
+            "No device found. Start your emulator and enable ADB, "
+            "then try: adb connect 127.0.0.1:5555",
+            "error",
         )
         return False
 
-    def screenshot(self) -> "Image.Image | None":
+    # ------------------------------------------------------------------
+    # Screen interaction
+    # ------------------------------------------------------------------
+
+    def screenshot(self) -> Optional["Image.Image"]:
+        if not PIL_OK:
+            self.log("Pillow not installed — run: pip install pillow", "error")
+            return None
         try:
             raw = subprocess.run(
                 ["adb", "-s", self.device, "exec-out", "screencap", "-p"],
                 capture_output=True,
-                timeout=10,
+                timeout=15,
             )
             return Image.open(io.BytesIO(raw.stdout))
-        except Exception as e:
-            self.log(f"Screenshot failed: {e}", "error")
+        except Exception as exc:
+            self.log(f"Screenshot failed: {exc}", "error")
             return None
 
     def tap(self, x: int, y: int, delay: float = 0.6):
-        self._run("shell", "input", "tap", str(x), str(y))
+        self._adb("shell", "input", "tap", str(x), str(y))
         time.sleep(delay)
 
     def tap_coord(self, name: str, delay: float = 0.6):
         c = self.coords[name]
-        self.tap(c[0], c[1], delay)
-
-    def swipe(self, x1: int, y1: int, x2: int, y2: int, ms: int = 400):
-        self._run("shell", "input", "swipe", str(x1), str(y1), str(x2), str(y2), str(ms))
-        time.sleep(0.5)
+        self.tap(int(c[0]), int(c[1]), delay)
 
     def type_text(self, text: str):
         safe = text.replace(" ", "%s").replace("'", "")
-        self._run("shell", "input", "text", safe)
+        self._adb("shell", "input", "text", safe)
         time.sleep(0.4)
 
     def clear_field(self):
-        self._run("shell", "input", "keyevent", "KEYCODE_CTRL_A")
+        self._adb("shell", "input", "keyevent", "KEYCODE_CTRL_A")
         time.sleep(0.1)
-        self._run("shell", "input", "keyevent", "KEYCODE_DEL")
+        self._adb("shell", "input", "keyevent", "KEYCODE_DEL")
         time.sleep(0.3)
 
     def press_back(self):
-        self._run("shell", "input", "keyevent", "KEYCODE_BACK")
+        self._adb("shell", "input", "keyevent", "KEYCODE_BACK")
         time.sleep(0.5)
 
     def launch_app(self):
-        self._run(
-            "shell", "am", "start", "-n", f"{APP_PACKAGE}/{APP_ACTIVITY}"
-        )
+        self._adb("shell", "am", "start", "-n",
+                  f"{APP_PACKAGE}/{APP_ACTIVITY}")
         time.sleep(4)
 
     # ------------------------------------------------------------------
     # OCR price reader
     # ------------------------------------------------------------------
 
-    def _ocr_region(self, img: "Image.Image", region: tuple) -> str:
+    def _read_price_from_region(
+        self, img: "Image.Image", region: Tuple
+    ) -> int:
+        if not TESSERACT_OK:
+            return 0
         crop = img.crop(region)
-        # Upscale + high-contrast greyscale improves OCR on small text
+        # 3× upscale + high contrast improves OCR on small stub numbers
         crop = crop.resize(
             (crop.width * 3, crop.height * 3), Image.LANCZOS
         )
         crop = crop.convert("L")
         crop = ImageEnhance.Contrast(crop).enhance(3.0)
         crop = crop.filter(ImageFilter.SHARPEN)
-        return pytesseract.image_to_string(
+        raw = pytesseract.image_to_string(
             crop,
             config="--psm 7 -c tessedit_char_whitelist=0123456789,",
         )
-
-    def read_price(self, img: "Image.Image", region_key: str) -> int:
-        if not TESSERACT_OK:
-            return 0
-        raw = self._ocr_region(img, self.coords[region_key])
         digits = re.sub(r"[^0-9]", "", raw)
         return int(digits) if digits else 0
+
+    def read_price(self, img: "Image.Image", coord_key: str) -> int:
+        return self._read_price_from_region(img, self.coords[coord_key])
 
     # ------------------------------------------------------------------
     # Marketplace navigation
     # ------------------------------------------------------------------
 
     def navigate_to_marketplace(self):
-        self.log("Navigating to Marketplace…")
+        self.log("Launching Companion App…")
         self.launch_app()
-        # Diamond Dynasty tab
+        self.log("Tapping Diamond Dynasty tab…")
         self.tap_coord("nav_diamond_dynasty")
         time.sleep(1.5)
-        # Marketplace sub-tab
+        self.log("Tapping Marketplace tab…")
         self.tap_coord("nav_marketplace")
-        time.sleep(2)
+        time.sleep(2.5)
+        self.log("Marketplace ready.")
 
     def search_for(self, term: str):
         self.tap_coord("search_bar")
         time.sleep(0.4)
         self.clear_field()
         self.type_text(term)
-        self._run("shell", "input", "keyevent", "KEYCODE_ENTER")
+        self._adb("shell", "input", "keyevent", "KEYCODE_ENTER")
         time.sleep(2.5)
 
     # ------------------------------------------------------------------
-    # Trading logic
+    # Price inspection
     # ------------------------------------------------------------------
 
-    CARD_TYPE_SEARCH = {
-        "diamondEquipment": "Diamond Equipment",
-        "liveSeries":       "Live Series",
-        "sponsorships":     "Sponsorship",
-    }
-
-    def get_prices(self) -> tuple[int, int]:
-        """Tap the first listing and read buy-now / best-sell prices."""
+    def get_prices(self) -> Tuple[int, int]:
+        """Open first listing and read buy-now + best-sell prices."""
         self.tap_coord("first_card_tap")
         time.sleep(1.5)
         img = self.screenshot()
@@ -267,13 +274,16 @@ class StubBot:
         time.sleep(1)
         return buy_now, best_sell
 
+    # ------------------------------------------------------------------
+    # Order placement
+    # ------------------------------------------------------------------
+
     def place_buy_order(self, price: int):
-        """Tap first listing → Buy → set price → confirm."""
+        """Open first listing → Buy Now → set price → confirm."""
         self.tap_coord("first_card_tap")
         time.sleep(1.5)
         self.tap_coord("buy_now_button")
         time.sleep(1)
-        # Enter custom bid price
         self.tap_coord("price_input")
         time.sleep(0.3)
         self.clear_field()
@@ -281,57 +291,71 @@ class StubBot:
         time.sleep(0.3)
         self.tap_coord("confirm_button")
         time.sleep(1.5)
-        self.tap_coord("ok_button")
+        self.tap_coord("confirm_button")   # second OK if needed
         time.sleep(1)
         self.press_back()
         time.sleep(1)
 
+    # ------------------------------------------------------------------
+    # Flip logic
+    # ------------------------------------------------------------------
+
+    CARD_SEARCH_TERMS: Dict[str, str] = {
+        "diamondEquipment": "Diamond Equipment",
+        "liveSeries":       "Live Series",
+        "sponsorships":     "Sponsorship",
+    }
+
     def attempt_flip(self, type_key: str) -> bool:
-        search_term = self.CARD_TYPE_SEARCH[type_key]
-        self.search_for(search_term)
+        label = self.CARD_SEARCH_TERMS[type_key]
+        self.search_for(label)
 
         buy_now, best_sell = self.get_prices()
 
         if buy_now == 0 or best_sell == 0:
-            self.log(f"[{search_term}] Could not read prices — skipping", "warn")
+            self.log(f"[{label}] Could not read prices — skipping", "warn")
             return False
 
-        gross_margin = buy_now - best_sell
-        net_margin   = gross_margin - int(buy_now * SALES_TAX)
+        tax        = int(buy_now * SALES_TAX)
+        net_margin = buy_now - best_sell - tax
 
         self.log(
-            f"[{search_term}] BuyNow={buy_now:,}  BestSell={best_sell:,}  "
-            f"Net margin={net_margin:,}"
+            f"[{label}] BuyNow={buy_now:,}  BestSell={best_sell:,}  "
+            f"Net={net_margin:,}  Tax={tax:,}"
         )
 
-        threshold = self.config.get("profitMargin", 500)
+        threshold = int(self.config.get("profitMargin", 500))
         if net_margin < threshold:
-            self.log(f"[{search_term}] Margin too thin ({net_margin:,} < {threshold:,})")
+            self.log(
+                f"[{label}] Margin {net_margin:,} < threshold {threshold:,} — skip"
+            )
             return False
 
-        budget = self.config.get("maxBudget", 100_000)
-        if best_sell + 1 > budget:
-            self.log(f"[{search_term}] Cost {best_sell+1:,} exceeds budget {budget:,}")
+        budget = int(self.config.get("maxBudget", 100_000))
+        bid    = best_sell + 1
+        if bid > budget:
+            self.log(f"[{label}] Bid {bid:,} exceeds budget {budget:,} — skip")
             return False
 
-        bid = best_sell + 1
-        self.log(f"[{search_term}] Placing buy order at {bid:,} stubs…")
+        self.log(f"[{label}] Placing buy order at {bid:,} stubs…")
         self.place_buy_order(bid)
 
         self.stats["tradesCompleted"] += 1
         self.stats["stubsEarned"]     += net_margin
 
-        self.trade_log.insert(0, {
-            "time":       datetime.now().strftime("%H:%M:%S"),
-            "type":       search_term,
-            "buyNow":     buy_now,
-            "bestSell":   best_sell,
-            "bid":        bid,
-            "netProfit":  net_margin,
-        })
-        self.stats["tradeHistory"] = self.trade_log[:50]
+        entry = {
+            "time":      datetime.now().strftime("%H:%M:%S"),
+            "type":      label,
+            "buyNow":    buy_now,
+            "bestSell":  best_sell,
+            "bid":       bid,
+            "netProfit": net_margin,
+        }
+        trade_history: List[dict] = self.stats.get("tradeHistory", [])
+        trade_history.insert(0, entry)
+        self.stats["tradeHistory"] = trade_history[:50]
 
-        self.log(f"[{search_term}] Order placed! Est. profit {net_margin:,} stubs")
+        self.log(f"[{label}] Order placed! Est. profit {net_margin:,} stubs")
         return True
 
     # ------------------------------------------------------------------
@@ -339,8 +363,10 @@ class StubBot:
     # ------------------------------------------------------------------
 
     def in_active_window(self) -> bool:
-        h = datetime.now().hour
-        return self.config.get("activeHoursStart", 0) <= h < self.config.get("activeHoursEnd", 24)
+        hour  = datetime.now().hour
+        start = int(self.config.get("activeHoursStart", 0))
+        end   = int(self.config.get("activeHoursEnd", 24))
+        return start <= hour < end
 
     # ------------------------------------------------------------------
     # Main loop
@@ -356,14 +382,18 @@ class StubBot:
 
         self.navigate_to_marketplace()
 
-        card_types = self.config.get("cardTypes", {})
-        active = [k for k, v in card_types.items() if v]
-        if not active:
-            self.log("No card types enabled — enable at least one in config.", "warn")
+        card_types  = self.config.get("cardTypes", {})
+        active_keys = [k for k, v in card_types.items() if v]
+
+        if not active_keys:
+            self.log(
+                "No card types enabled — enable at least one in Configuration.",
+                "warn",
+            )
             self.stats["running"] = False
             return
 
-        delay = max(5, self.config.get("delayBetweenTrades", 30))
+        delay = max(5, int(self.config.get("delayBetweenTrades", 30)))
 
         while self.running:
             if not self.in_active_window():
@@ -374,23 +404,24 @@ class StubBot:
                     time.sleep(1)
                 continue
 
-            for card_type in active:
+            for key in active_keys:
                 if not self.running:
                     break
                 try:
-                    self.attempt_flip(card_type)
-                except ADBError as e:
-                    self.log(f"ADB error: {e}", "error")
-                    time.sleep(10)
-                except Exception as e:
-                    self.log(f"Unexpected error: {e}", "error")
+                    self.attempt_flip(key)
+                except ADBError as exc:
+                    self.log(f"ADB error: {exc} — retrying in 15s", "error")
+                    time.sleep(15)
+                except Exception as exc:
+                    self.log(f"Unexpected error: {exc}", "error")
                 time.sleep(3)
 
-            self.log(f"Cycle done. Next in {delay}s…")
-            for _ in range(delay):
-                if not self.running:
-                    break
-                time.sleep(1)
+            if self.running:
+                self.log(f"Cycle complete. Next in {delay}s…")
+                for _ in range(delay):
+                    if not self.running:
+                        break
+                    time.sleep(1)
 
         self.log("Bot stopped.")
 
