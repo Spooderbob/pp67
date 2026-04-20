@@ -1,0 +1,13 @@
+{
+  "profitMargin": 500,
+  "activeHoursStart": 8,
+  "activeHoursEnd": 23,
+  "cardTypes": {
+    "diamondEquipment": true,
+    "liveSeries": true,
+    "sponsorships": false
+  },
+  "delayBetweenTrades": 30,
+  "maxBudget": 100000,
+  "coords": {}
+}
