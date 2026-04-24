@@ -3,141 +3,463 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PrizePicks AI Analyzer</title>
+    <title>ShowFlip — MLB The Show 26 Flip Bot</title>
     <style>
+        :root {
+            --bg: #080c14;
+            --bg2: #0f1622;
+            --bg3: #162030;
+            --border: #1e2d45;
+            --accent: #1d8cf8;
+            --accent2: #00d4aa;
+            --gold: #f5a623;
+            --red: #ff4d6d;
+            --green: #00d4aa;
+            --text: #e8f0fe;
+            --muted: #6b82a0;
+            --card-bg: #0f1825;
+        }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0a; color: #fff; line-height: 1.6; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 2rem; text-align: center; }
-        .header h1 { font-size: 2.5rem; font-weight: 700; margin-bottom: 0.5rem; }
-        .header p { font-size: 1.1rem; opacity: 0.9; }
-        .stats-bar { display: flex; justify-content: center; gap: 3rem; padding: 1.5rem; background: #1a1a1a; border-bottom: 1px solid #333; }
-        .stat { text-align: center; }
-        .stat-value { font-size: 2rem; font-weight: 600; color: #667eea; }
-        .stat-label { font-size: 0.9rem; opacity: 0.7; }
-        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
-        .refresh-notice { text-align: center; padding: 1rem; background: #1a1a1a; border-radius: 8px; margin-bottom: 2rem; font-size: 0.9rem; opacity: 0.8; }
-        .picks-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 1.5rem; }
-        .pick-card { background: #1a1a1a; border: 1px solid #333; border-radius: 12px; padding: 1.5rem; transition: all 0.3s; }
-        .pick-card:hover { border-color: #667eea; transform: translateY(-4px); }
-        .player-name { font-size: 1.3rem; font-weight: 600; margin-bottom: 0.25rem; }
-        .stat-type { font-size: 1rem; color: #667eea; margin-bottom: 0.5rem; }
-        .prop-line { font-size: 1.5rem; font-weight: 700; margin: 1rem 0; padding: 0.75rem; background: #0a0a0a; border-radius: 6px; text-align: center; }
-        .analysis-section { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #333; }
-        .recommendation { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
-        .pick-side { font-size: 1.1rem; font-weight: 600; padding: 0.5rem 1rem; border-radius: 6px; }
-        .OVER { background: rgba(0, 255, 0, 0.1); color: #00ff00; }
-        .UNDER { background: rgba(255, 0, 0, 0.1); color: #ff4444; }
-        .confidence { text-align: center; }
-        .confidence-value { font-size: 2rem; font-weight: 700; color: #667eea; }
-        .confidence-bar { width: 100%; height: 8px; background: #333; border-radius: 4px; overflow: hidden; margin-top: 0.5rem; }
-        .confidence-fill { height: 100%; background: linear-gradient(90deg, #ff4444, #667eea, #00ff00); transition: width 0.5s; }
-        .reasoning { font-size: 0.9rem; opacity: 0.8; margin-top: 1rem; font-style: italic; }
-        .loading, .error { text-align: center; padding: 4rem; font-size: 1.2rem; }
-        .error { color: #ff4444; }
-        .last-updated { position: fixed; bottom: 1rem; right: 1rem; padding: 0.5rem 1rem; background: #1a1a1a; border: 1px solid #333; border-radius: 6px; font-size: 0.8rem; opacity: 0.7; }
-        @media (max-width: 768px) { .header h1 { font-size: 2rem; } .stats-bar { flex-direction: column; gap: 1rem; } .picks-grid { grid-template-columns: 1fr; } }
+        body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; overflow-x: hidden; }
+
+        /* ── NAV ── */
+        nav {
+            position: sticky; top: 0; z-index: 100;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0.9rem 2.5rem;
+            background: rgba(8, 12, 20, 0.92);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+        }
+        .nav-logo { display: flex; align-items: center; gap: 0.6rem; font-size: 1.3rem; font-weight: 700; letter-spacing: -0.3px; text-decoration: none; color: var(--text); }
+        .nav-logo-icon { width: 32px; height: 32px; background: linear-gradient(135deg, var(--accent), var(--accent2)); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1rem; }
+        .nav-links { display: flex; align-items: center; gap: 2rem; list-style: none; }
+        .nav-links a { text-decoration: none; color: var(--muted); font-size: 0.92rem; font-weight: 500; transition: color .2s; }
+        .nav-links a:hover { color: var(--text); }
+        .nav-badge { background: var(--accent); color: #fff; font-size: 0.7rem; font-weight: 700; padding: 0.15rem 0.45rem; border-radius: 4px; margin-left: 0.3rem; text-transform: uppercase; }
+        .btn { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.55rem 1.2rem; border-radius: 8px; font-size: 0.88rem; font-weight: 600; cursor: pointer; text-decoration: none; transition: all .2s; border: none; }
+        .btn-primary { background: var(--accent); color: #fff; }
+        .btn-primary:hover { background: #3a9ff9; box-shadow: 0 0 18px rgba(29,140,248,0.4); }
+        .btn-ghost { background: transparent; color: var(--text); border: 1px solid var(--border); }
+        .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+        /* ── HERO ── */
+        .hero {
+            position: relative; text-align: center; padding: 5.5rem 2rem 4rem;
+            background: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(29,140,248,0.15) 0%, transparent 70%);
+            overflow: hidden;
+        }
+        .hero::before {
+            content: ''; position: absolute; inset: 0;
+            background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%231d8cf8' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            pointer-events: none;
+        }
+        .hero-tag { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.3rem 0.9rem; background: rgba(29,140,248,0.12); border: 1px solid rgba(29,140,248,0.3); border-radius: 20px; font-size: 0.8rem; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 1.5rem; }
+        .dot-live { width: 7px; height: 7px; background: var(--green); border-radius: 50%; animation: pulse 1.4s ease-in-out infinite; }
+        @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.3)} }
+        .hero h1 { font-size: clamp(2.2rem, 5vw, 3.8rem); font-weight: 800; line-height: 1.1; letter-spacing: -1.5px; margin-bottom: 1.2rem; }
+        .hero h1 span { background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .hero p { max-width: 580px; margin: 0 auto 2rem; color: var(--muted); font-size: 1.1rem; }
+        .hero-ctas { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-bottom: 3rem; }
+        .btn-lg { padding: 0.8rem 2rem; font-size: 1rem; border-radius: 10px; }
+
+        /* ── STATS TICKER ── */
+        .stats-bar { display: flex; justify-content: center; flex-wrap: wrap; gap: 0; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; max-width: 900px; margin: 0 auto 3rem; background: var(--bg2); }
+        .stat-item { flex: 1; min-width: 160px; padding: 1.2rem 1.5rem; text-align: center; border-right: 1px solid var(--border); position: relative; }
+        .stat-item:last-child { border-right: none; }
+        .stat-val { font-size: 1.9rem; font-weight: 800; letter-spacing: -1px; }
+        .stat-val.green { color: var(--green); }
+        .stat-val.blue { color: var(--accent); }
+        .stat-val.gold { color: var(--gold); }
+        .stat-val.white { color: var(--text); }
+        .stat-lbl { font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 0.15rem; }
+
+        /* ── SECTION LABELS ── */
+        .section-label { text-align: center; margin-bottom: 0.6rem; }
+        .section-label span { display: inline-block; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--accent); padding: 0.25rem 0.8rem; background: rgba(29,140,248,0.1); border: 1px solid rgba(29,140,248,0.2); border-radius: 20px; }
+        .section-title { text-align: center; font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 800; letter-spacing: -0.8px; margin-bottom: 0.5rem; }
+        .section-sub { text-align: center; color: var(--muted); max-width: 520px; margin: 0 auto 2.5rem; font-size: 0.97rem; }
+
+        /* ── LIVE FLIPS ── */
+        .live-section { max-width: 1360px; margin: 0 auto; padding: 3rem 1.5rem; }
+        .live-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem; }
+        .live-title { display: flex; align-items: center; gap: 0.7rem; font-size: 1.3rem; font-weight: 700; }
+        .live-badge { display: flex; align-items: center; gap: 0.3rem; padding: 0.25rem 0.7rem; background: rgba(0,212,170,0.12); border: 1px solid rgba(0,212,170,0.3); border-radius: 6px; font-size: 0.75rem; font-weight: 700; color: var(--green); text-transform: uppercase; }
+        .update-time { font-size: 0.82rem; color: var(--muted); }
+        .sort-bar { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+        .sort-btn { padding: 0.35rem 0.85rem; border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--muted); transition: all .2s; }
+        .sort-btn:hover, .sort-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+        /* ── FLIP CARDS ── */
+        .flips-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.2rem; }
+        .flip-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 14px;
+            padding: 1.35rem; transition: all .25s; position: relative; overflow: hidden;
+        }
+        .flip-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--accent), var(--accent2)); opacity: 0; transition: opacity .25s; }
+        .flip-card:hover { border-color: rgba(29,140,248,0.4); transform: translateY(-3px); box-shadow: 0 8px 30px rgba(0,0,0,0.4); }
+        .flip-card:hover::before { opacity: 1; }
+        .flip-card.rarity-Diamond::before { background: linear-gradient(90deg, #b9f2ff, #1d8cf8, #b9f2ff); }
+        .flip-card.rarity-Gold::before { background: linear-gradient(90deg, #f5a623, #ffe066); }
+
+        .card-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1rem; }
+        .card-name { font-size: 1.05rem; font-weight: 700; line-height: 1.2; }
+        .card-meta { font-size: 0.78rem; color: var(--muted); margin-top: 0.2rem; }
+        .overall-badge { width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; font-weight: 900; flex-shrink: 0; }
+        .overall-badge.Diamond { background: linear-gradient(135deg, #1b3a6e, #1d8cf8); color: #b9f2ff; border: 1px solid rgba(185,242,255,0.3); }
+        .overall-badge.Gold { background: linear-gradient(135deg, #4a3000, #f5a623); color: #ffe5a0; border: 1px solid rgba(245,166,35,0.3); }
+
+        .prices { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; margin-bottom: 1rem; }
+        .price-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 0.65rem 0.8rem; }
+        .price-box-lbl { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); margin-bottom: 0.2rem; }
+        .price-box-val { font-size: 1.1rem; font-weight: 700; }
+        .price-box-val.buy { color: var(--red); }
+        .price-box-val.sell { color: var(--green); }
+        .stubs-icon { font-size: 0.85rem; }
+
+        .profit-row { display: flex; align-items: center; justify-content: space-between; padding: 0.6rem 0.8rem; background: rgba(0,212,170,0.07); border: 1px solid rgba(0,212,170,0.2); border-radius: 8px; margin-bottom: 1rem; }
+        .profit-label { font-size: 0.78rem; color: var(--muted); }
+        .profit-val { font-size: 1.1rem; font-weight: 800; color: var(--green); }
+        .roi-pill { background: rgba(0,212,170,0.15); color: var(--green); font-size: 0.72rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 4px; }
+
+        .card-bottom { display: flex; align-items: center; justify-content: space-between; }
+        .conf-wrap { display: flex; flex-direction: column; gap: 0.25rem; flex: 1; }
+        .conf-row { display: flex; justify-content: space-between; font-size: 0.75rem; }
+        .conf-bar { height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; width: 100%; }
+        .conf-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+        .volume-badge { font-size: 0.72rem; font-weight: 700; padding: 0.2rem 0.55rem; border-radius: 5px; background: rgba(29,140,248,0.1); color: var(--accent); border: 1px solid rgba(29,140,248,0.2); }
+
+        .reason-box { margin-top: 0.85rem; padding-top: 0.85rem; border-top: 1px solid var(--border); font-size: 0.78rem; color: var(--muted); line-height: 1.5; }
+        .trend-up { color: var(--green); }
+        .trend-stable { color: var(--gold); }
+        .trend-down { color: var(--red); }
+
+        /* ── FEATURES ── */
+        .features-section { padding: 4rem 2rem; background: linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%); }
+        .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem; max-width: 1100px; margin: 0 auto; }
+        .feat-card { background: var(--bg3); border: 1px solid var(--border); border-radius: 14px; padding: 1.7rem; transition: border-color .2s; }
+        .feat-card:hover { border-color: rgba(29,140,248,0.4); }
+        .feat-icon { width: 46px; height: 46px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; margin-bottom: 1rem; }
+        .feat-icon.blue { background: rgba(29,140,248,0.12); }
+        .feat-icon.green { background: rgba(0,212,170,0.12); }
+        .feat-icon.gold { background: rgba(245,166,35,0.12); }
+        .feat-icon.red { background: rgba(255,77,109,0.12); }
+        .feat-title { font-size: 1rem; font-weight: 700; margin-bottom: 0.4rem; }
+        .feat-desc { font-size: 0.86rem; color: var(--muted); line-height: 1.6; }
+
+        /* ── HOW IT WORKS ── */
+        .how-section { padding: 4rem 2rem; max-width: 900px; margin: 0 auto; }
+        .steps { display: flex; flex-direction: column; gap: 1.5rem; }
+        .step { display: flex; gap: 1.2rem; align-items: flex-start; }
+        .step-num { width: 38px; height: 38px; border-radius: 10px; background: linear-gradient(135deg, var(--accent), var(--accent2)); display: flex; align-items: center; justify-content: center; font-size: 0.9rem; font-weight: 800; flex-shrink: 0; margin-top: 0.1rem; }
+        .step-content h3 { font-size: 1rem; font-weight: 700; margin-bottom: 0.3rem; }
+        .step-content p { font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
+        .step-connector { width: 2px; height: 24px; background: var(--border); margin-left: 18px; }
+
+        /* ── DISCLAIMER ── */
+        .disclaimer { max-width: 900px; margin: 0 auto 3rem; padding: 1.2rem 1.5rem; background: rgba(245,166,35,0.06); border: 1px solid rgba(245,166,35,0.2); border-radius: 10px; font-size: 0.8rem; color: #c0a050; line-height: 1.6; }
+        .disclaimer strong { color: var(--gold); }
+
+        /* ── FOOTER ── */
+        footer { border-top: 1px solid var(--border); padding: 2rem 2.5rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; background: var(--bg2); }
+        .footer-logo { font-size: 1.1rem; font-weight: 700; color: var(--text); }
+        .footer-links { display: flex; gap: 1.5rem; }
+        .footer-links a { font-size: 0.83rem; color: var(--muted); text-decoration: none; transition: color .2s; }
+        .footer-links a:hover { color: var(--text); }
+        .footer-copy { font-size: 0.78rem; color: var(--muted); }
+
+        /* ── LOADING / EMPTY ── */
+        .loading-state, .error-state { text-align: center; padding: 4rem 2rem; color: var(--muted); }
+        .spinner { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; margin: 0 auto 1rem; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 768px) {
+            nav { padding: 0.9rem 1.2rem; }
+            .nav-links { display: none; }
+            .hero { padding: 3.5rem 1.2rem 2.5rem; }
+            .flips-grid { grid-template-columns: 1fr; }
+            .live-header { flex-direction: column; align-items: flex-start; }
+        }
+
+        /* ── SCROLLBAR ── */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>PrizePicks AI Analyzer</h1>
-        <p>Real-time AI-powered sports prop analysis</p>
+
+<!-- NAV -->
+<nav>
+    <a class="nav-logo" href="#">
+        <div class="nav-logo-icon">⚾</div>
+        ShowFlip
+    </a>
+    <ul class="nav-links">
+        <li><a href="#flips">Live Flips <span class="nav-badge">Live</span></a></li>
+        <li><a href="#features">Features</a></li>
+        <li><a href="#how-it-works">How It Works</a></li>
+    </ul>
+    <div style="display:flex;gap:.6rem;">
+        <a href="#flips" class="btn btn-primary">View Flips →</a>
     </div>
+</nav>
 
-    <div class="stats-bar">
-        <div class="stat">
-            <div class="stat-value" id="totalPicks">0</div>
-            <div class="stat-label">Today's Picks</div>
+<!-- HERO -->
+<section class="hero">
+    <div class="hero-tag">
+        <div class="dot-live"></div>
+        Live — MLB The Show 26
+    </div>
+    <h1>The Smartest<br><span>Flip Bot</span> for<br>The Show 26</h1>
+    <p>Real-time marketplace scanning. Instant buy-low sell-high opportunities. Maximize your stubs without the grind.</p>
+    <div class="hero-ctas">
+        <a href="#flips" class="btn btn-primary btn-lg">→ See Live Flips</a>
+        <a href="#how-it-works" class="btn btn-ghost btn-lg">How It Works</a>
+    </div>
+    <div class="stats-bar" id="statsBar">
+        <div class="stat-item">
+            <div class="stat-val green" id="heroProfit">—</div>
+            <div class="stat-lbl">Stubs Profit Today</div>
         </div>
-        <div class="stat">
-            <div class="stat-value">78%</div>
-            <div class="stat-label">Avg Confidence</div>
+        <div class="stat-item">
+            <div class="stat-val blue" id="heroFlips">—</div>
+            <div class="stat-lbl">Active Flip Picks</div>
         </div>
-        <div class="stat">
-            <div class="stat-value">5m</div>
-            <div class="stat-label">Update Interval</div>
+        <div class="stat-item">
+            <div class="stat-val gold" id="heroRate">—</div>
+            <div class="stat-lbl">Success Rate</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-val white">5m</div>
+            <div class="stat-lbl">Scan Interval</div>
         </div>
     </div>
+</section>
 
-    <div class="container">
-        <div class="refresh-notice">
-            Data updates every 5 minutes. Last updated: <span id="lastUpdate">Loading...</span>
+<!-- LIVE FLIPS -->
+<section id="flips" class="live-section">
+    <div class="live-header">
+        <div>
+            <div class="live-title">
+                <span>Live Flip Opportunities</span>
+                <div class="live-badge"><div class="dot-live"></div> Live</div>
+            </div>
+            <div class="update-time">Auto-refreshes every 30 seconds · Last updated: <span id="lastUpdated">Loading…</span></div>
         </div>
-
-        <div id="picksContainer" class="picks-grid">
-            <div class="loading">Loading today's picks...</div>
+        <div class="sort-bar">
+            <button class="sort-btn active" onclick="sortFlips('profit', this)">Top Profit</button>
+            <button class="sort-btn" onclick="sortFlips('roi', this)">Best ROI%</button>
+            <button class="sort-btn" onclick="sortFlips('confidence', this)">Confidence</button>
         </div>
     </div>
+    <div id="flipsGrid" class="flips-grid">
+        <div class="loading-state" style="grid-column:1/-1">
+            <div class="spinner"></div>
+            Scanning marketplace…
+        </div>
+    </div>
+</section>
 
-    <div class="last-updated" id="lastUpdatedFixed"></div>
+<!-- FEATURES -->
+<section id="features" class="features-section">
+    <div class="section-label"><span>Why ShowFlip</span></div>
+    <h2 class="section-title">Built for Diamond Dynasty Traders</h2>
+    <p class="section-sub">Every feature is designed to help you find profitable flips faster and with more confidence.</p>
+    <div class="features-grid">
+        <div class="feat-card">
+            <div class="feat-icon blue">🔍</div>
+            <div class="feat-title">Real-Time Market Scanning</div>
+            <div class="feat-desc">Continuously monitors buy-now prices, order books, and sell velocity across hundreds of cards every 5 minutes.</div>
+        </div>
+        <div class="feat-card">
+            <div class="feat-icon green">📊</div>
+            <div class="feat-title">Profit & ROI Calculations</div>
+            <div class="feat-desc">Every flip shows exact stubs profit after the 10% marketplace tax, plus ROI% so you always know the real return.</div>
+        </div>
+        <div class="feat-card">
+            <div class="feat-icon gold">⚡</div>
+            <div class="feat-title">Trend & Volume Analysis</div>
+            <div class="feat-desc">Price trend direction and transaction volume help you pick fast-moving cards and avoid stale flips.</div>
+        </div>
+        <div class="feat-card">
+            <div class="feat-icon red">🎯</div>
+            <div class="feat-title">Confidence Scoring</div>
+            <div class="feat-desc">Each pick is scored 0–100 based on historical accuracy, spread width, and current market depth — so you know which flips to trust.</div>
+        </div>
+        <div class="feat-card">
+            <div class="feat-icon blue">🏆</div>
+            <div class="feat-title">Rarity Filtering</div>
+            <div class="feat-desc">Filter picks by Diamond, Gold, or Silver — whether you're a high-roller or starting small, there's a flip for every budget.</div>
+        </div>
+        <div class="feat-card">
+            <div class="feat-icon green">🔄</div>
+            <div class="feat-title">Auto-Refresh Feed</div>
+            <div class="feat-desc">The flip feed updates automatically every 30 seconds. No manual refreshing needed — just watch the opportunities roll in.</div>
+        </div>
+    </div>
+</section>
 
-    <script>
-        function formatTimestamp(timestamp) {
-            return new Date(timestamp).toLocaleString('en-US', {
-                hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
-            });
-        }
+<!-- HOW IT WORKS -->
+<section id="how-it-works" class="how-section">
+    <div class="section-label"><span>Process</span></div>
+    <h2 class="section-title">How It Works</h2>
+    <p class="section-sub">ShowFlip handles the analysis. You handle the trades.</p>
+    <div class="steps">
+        <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-content">
+                <h3>Market Data is Scanned</h3>
+                <p>ShowFlip scans the MLB The Show 26 community marketplace every 5 minutes, tracking buy-now prices, order books, and sell velocity for cards across all rarities.</p>
+            </div>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-content">
+                <h3>Flip Opportunities Are Identified</h3>
+                <p>The algorithm detects price gaps — cards selling below their true market value. It calculates exact profit after the 10% tax and assigns a confidence score based on trend and volume.</p>
+            </div>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-content">
+                <h3>Picks Are Published Live</h3>
+                <p>Only high-confidence opportunities appear on the feed. Each pick shows the buy price, sell target, expected profit, and the reasoning behind the call.</p>
+            </div>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step">
+            <div class="step-num">4</div>
+            <div class="step-content">
+                <h3>You Execute the Trade</h3>
+                <p>Open the in-game marketplace, buy the card at or below the listed buy price, then list it at the sell price. Collect your stubs when it sells.</p>
+            </div>
+        </div>
+    </div>
+</section>
 
-        function loadPicks() {
-            fetch('picks.json')
-                .then(response => response.json())
-                .then(data => {
-                    const container = document.getElementById('picksContainer');
-                    const totalPicksEl = document.getElementById('totalPicks');
-                    const lastUpdateEl = document.getElementById('lastUpdate');
-                    const lastUpdatedFixedEl = document.getElementById('lastUpdatedFixed');
+<!-- DISCLAIMER -->
+<div class="disclaimer" style="padding-left:2rem;padding-right:2rem;">
+    <strong>Disclaimer:</strong> ShowFlip is an independent research and analysis tool for educational purposes. It is not affiliated with, endorsed by, or connected to Sony Interactive Entertainment, MLB, or MLB The Show 26. All marketplace activity is conducted manually by users within the game. Prices are estimates and can change rapidly. Use at your own discretion.
+</div>
 
-                    if (data.status === 'error') {
-                        container.innerHTML = '<div class="error">Error loading picks. Please refresh.</div>';
-                        return;
-                    }
+<!-- FOOTER -->
+<footer>
+    <div class="footer-logo">⚾ ShowFlip</div>
+    <div class="footer-links">
+        <a href="#flips">Live Flips</a>
+        <a href="#features">Features</a>
+        <a href="#how-it-works">How It Works</a>
+    </div>
+    <div class="footer-copy">MLB The Show 26 Flip Analysis · For educational use only</div>
+</footer>
 
-                    totalPicksEl.textContent = data.totalPicks;
-                    lastUpdateEl.textContent = formatTimestamp(data.timestamp);
-                    lastUpdatedFixedEl.textContent = `Updated: ${formatTimestamp(data.timestamp)}`;
+<script>
+    let allFlips = [];
+    let currentSort = 'profit';
 
-                    if (data.picks.length === 0) {
-                        container.innerHTML = '<div class="loading">No active picks. Check back closer to game time.</div>';
-                        return;
-                    }
+    function fmt(n) {
+        if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+        if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
+        return n.toLocaleString();
+    }
 
-                    container.innerHTML = data.picks.map(pick => `
-                        <div class="pick-card">
-                            <div class="player-name">${pick.player}</div>
-                            <div class="stat-type">${pick.statType}</div>
-                            <div class="prop-line">${pick.propLine}</div>
-                            
-                            <div class="analysis-section">
-                                <div class="recommendation">
-                                    <div>
-                                        <div style="font-size: 0.8rem; opacity: 0.7;">AI Recommends:</div>
-                                        <div class="pick-side ${pick.pick}">${pick.pick}</div>
-                                    </div>
-                                    <div class="confidence">
-                                        <div style="font-size: 0.8rem; opacity: 0.7;">Confidence</div>
-                                        <div class="confidence-value">${pick.confidence}%</div>
-                                        <div class="confidence-bar">
-                                            <div class="confidence-fill" style="width: ${pick.confidence}%"></div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="reasoning">💡 ${pick.reasoning}</div>
-                                <div style="margin-top: 0.5rem; font-size: 0.8rem; opacity: 0.7;">
-                                    Expected Value: +${pick.ev}%
-                                </div>
-                            </div>
-                        </div>
-                    `).join('');
-                })
-                .catch(error => {
-                    console.error('Error loading picks:', error);
-                    document.getElementById('picksContainer').innerHTML = 
-                        '<div class="error">Failed to load picks. Check console for details.</div>';
+    function trendIcon(t) {
+        if (t === 'up') return '<span class="trend-up">↑ Rising</span>';
+        if (t === 'down') return '<span class="trend-down">↓ Falling</span>';
+        return '<span class="trend-stable">→ Stable</span>';
+    }
+
+    function renderFlip(f) {
+        return `
+        <div class="flip-card rarity-${f.rarity}" data-id="${f.id}">
+            <div class="card-top">
+                <div>
+                    <div class="card-name">${f.cardName}</div>
+                    <div class="card-meta">${f.series} · ${trendIcon(f.trend)}</div>
+                </div>
+                <div class="overall-badge ${f.rarity}">${f.overall}</div>
+            </div>
+            <div class="prices">
+                <div class="price-box">
+                    <div class="price-box-lbl">Buy At</div>
+                    <div class="price-box-val buy"><span class="stubs-icon">S</span> ${f.buyPrice.toLocaleString()}</div>
+                </div>
+                <div class="price-box">
+                    <div class="price-box-lbl">Sell For</div>
+                    <div class="price-box-val sell"><span class="stubs-icon">S</span> ${f.sellPrice.toLocaleString()}</div>
+                </div>
+            </div>
+            <div class="profit-row">
+                <div>
+                    <div class="profit-label">Net Profit (after tax)</div>
+                    <div class="profit-val">+${f.profit.toLocaleString()} stubs</div>
+                </div>
+                <div class="roi-pill">+${f.roi}% ROI</div>
+            </div>
+            <div class="card-bottom">
+                <div class="conf-wrap">
+                    <div class="conf-row">
+                        <span style="color:var(--muted);font-size:0.74rem">Confidence</span>
+                        <span style="font-size:0.74rem;font-weight:700">${f.confidence}%</span>
+                    </div>
+                    <div class="conf-bar">
+                        <div class="conf-fill" style="width:${f.confidence}%"></div>
+                    </div>
+                </div>
+                <div style="margin-left:1rem">
+                    <div class="volume-badge">${f.volume} Vol</div>
+                </div>
+            </div>
+            <div class="reason-box">💡 ${f.reason}</div>
+        </div>`;
+    }
+
+    function sortFlips(key, btn) {
+        currentSort = key;
+        document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const sorted = [...allFlips].sort((a, b) => b[key] - a[key]);
+        document.getElementById('flipsGrid').innerHTML = sorted.map(renderFlip).join('');
+    }
+
+    function loadData() {
+        fetch('picks.json?t=' + Date.now())
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'error' || !data.flips) {
+                    document.getElementById('flipsGrid').innerHTML =
+                        '<div class="error-state" style="grid-column:1/-1">⚠️ No flip data available. Check back shortly.</div>';
+                    return;
+                }
+
+                allFlips = data.flips;
+
+                // Hero stats
+                document.getElementById('heroProfit').textContent = fmt(data.totalProfit);
+                document.getElementById('heroFlips').textContent = data.activeFlips;
+                document.getElementById('heroRate').textContent = data.successRate + '%';
+                document.getElementById('lastUpdated').textContent =
+                    new Date(data.timestamp).toLocaleString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+                // Render sorted
+                const sorted = [...allFlips].sort((a, b) => {
+                    return b[currentSort] - a[currentSort];
                 });
-        }
+                document.getElementById('flipsGrid').innerHTML = sorted.map(renderFlip).join('');
+            })
+            .catch(() => {
+                document.getElementById('flipsGrid').innerHTML =
+                    '<div class="error-state" style="grid-column:1/-1">⚠️ Failed to load flips. Retrying…</div>';
+            });
+    }
 
-        loadPicks();
-        setInterval(loadPicks, 30000); // Auto-refresh every 30 seconds
-    </script>
+    loadData();
+    setInterval(loadData, 30000);
+</script>
 </body>
 </html>
