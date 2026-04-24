@@ -11,30 +11,26 @@ on:
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
-      
+
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.9'
-        
-    - name: Install Chrome & dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y google-chrome-stable
-        python -m pip install --upgrade pip
-        pip install selenium webdriver-manager
-        
-    - name: Run debug scraper
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: pip install requests
+
+    - name: Run scraper
       run: python scraper.py
-        
-    - name: Commit all files (including debug)
+
+    - name: Commit picks.json
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "AI Analyzer"
-        git add picks.json debug_* || true
-        git commit -m "Update + Debug: $(date -u +'%Y-%m-%d %H:%M UTC')" || exit 0
+        git add picks.json
+        git commit -m "Update picks: $(date -u +'%Y-%m-%d %H:%M UTC')" || exit 0
         git push
