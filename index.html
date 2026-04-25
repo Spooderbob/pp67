@@ -3,141 +3,590 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PrizePicks AI Analyzer</title>
+    <title>MLB The Show 26 Auto Market Bot — Free Access</title>
+    <meta name="description" content="Free, fan-made documentation, downloads and community for an MLB The Show 26 auto market bot. For use only on approved test environments.">
     <style>
+        :root {
+            --bg: #06070d;
+            --bg-2: #0d0f1a;
+            --panel: #11142099;
+            --panel-solid: #111420;
+            --border: #1f2438;
+            --text: #e7eaf6;
+            --muted: #9aa3bd;
+            --grad-1: #6366f1;
+            --grad-2: #22d3ee;
+            --grad-3: #a855f7;
+            --accent: #22d3ee;
+            --good: #34d399;
+            --bad: #f87171;
+            --warn: #fbbf24;
+        }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0a; color: #fff; line-height: 1.6; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 2rem; text-align: center; }
-        .header h1 { font-size: 2.5rem; font-weight: 700; margin-bottom: 0.5rem; }
-        .header p { font-size: 1.1rem; opacity: 0.9; }
-        .stats-bar { display: flex; justify-content: center; gap: 3rem; padding: 1.5rem; background: #1a1a1a; border-bottom: 1px solid #333; }
-        .stat { text-align: center; }
-        .stat-value { font-size: 2rem; font-weight: 600; color: #667eea; }
-        .stat-label { font-size: 0.9rem; opacity: 0.7; }
-        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
-        .refresh-notice { text-align: center; padding: 1rem; background: #1a1a1a; border-radius: 8px; margin-bottom: 2rem; font-size: 0.9rem; opacity: 0.8; }
-        .picks-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 1.5rem; }
-        .pick-card { background: #1a1a1a; border: 1px solid #333; border-radius: 12px; padding: 1.5rem; transition: all 0.3s; }
-        .pick-card:hover { border-color: #667eea; transform: translateY(-4px); }
-        .player-name { font-size: 1.3rem; font-weight: 600; margin-bottom: 0.25rem; }
-        .stat-type { font-size: 1rem; color: #667eea; margin-bottom: 0.5rem; }
-        .prop-line { font-size: 1.5rem; font-weight: 700; margin: 1rem 0; padding: 0.75rem; background: #0a0a0a; border-radius: 6px; text-align: center; }
-        .analysis-section { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #333; }
-        .recommendation { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
-        .pick-side { font-size: 1.1rem; font-weight: 600; padding: 0.5rem 1rem; border-radius: 6px; }
-        .OVER { background: rgba(0, 255, 0, 0.1); color: #00ff00; }
-        .UNDER { background: rgba(255, 0, 0, 0.1); color: #ff4444; }
-        .confidence { text-align: center; }
-        .confidence-value { font-size: 2rem; font-weight: 700; color: #667eea; }
-        .confidence-bar { width: 100%; height: 8px; background: #333; border-radius: 4px; overflow: hidden; margin-top: 0.5rem; }
-        .confidence-fill { height: 100%; background: linear-gradient(90deg, #ff4444, #667eea, #00ff00); transition: width 0.5s; }
-        .reasoning { font-size: 0.9rem; opacity: 0.8; margin-top: 1rem; font-style: italic; }
-        .loading, .error { text-align: center; padding: 4rem; font-size: 1.2rem; }
-        .error { color: #ff4444; }
-        .last-updated { position: fixed; bottom: 1rem; right: 1rem; padding: 0.5rem 1rem; background: #1a1a1a; border: 1px solid #333; border-radius: 6px; font-size: 0.8rem; opacity: 0.7; }
-        @media (max-width: 768px) { .header h1 { font-size: 2rem; } .stats-bar { flex-direction: column; gap: 1rem; } .picks-grid { grid-template-columns: 1fr; } }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif;
+            background: radial-gradient(1200px 600px at 10% -10%, #1a1f3a 0%, transparent 60%),
+                        radial-gradient(900px 500px at 110% 10%, #2a1140 0%, transparent 55%),
+                        var(--bg);
+            color: var(--text);
+            line-height: 1.65;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        a { color: var(--accent); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+
+        /* NAV */
+        .nav {
+            position: sticky; top: 0; z-index: 50;
+            backdrop-filter: blur(12px);
+            background: rgba(6, 7, 13, 0.7);
+            border-bottom: 1px solid var(--border);
+        }
+        .nav-inner {
+            max-width: 1200px; margin: 0 auto;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0.9rem 1.25rem;
+        }
+        .brand {
+            display: flex; align-items: center; gap: 0.7rem;
+            font-weight: 800; letter-spacing: 0.3px;
+        }
+        .brand-mark {
+            width: 28px; height: 28px; border-radius: 8px;
+            background: conic-gradient(from 180deg, var(--grad-1), var(--grad-2), var(--grad-3), var(--grad-1));
+            box-shadow: 0 0 18px rgba(99, 102, 241, 0.5);
+        }
+        .nav-links { display: flex; gap: 1.25rem; flex-wrap: wrap; }
+        .nav-links a { color: var(--muted); font-size: 0.92rem; }
+        .nav-links a:hover { color: var(--text); text-decoration: none; }
+        .nav-cta {
+            padding: 0.55rem 1rem; border-radius: 999px;
+            background: linear-gradient(135deg, var(--grad-1), var(--grad-3));
+            color: white; font-weight: 600; font-size: 0.9rem;
+        }
+        .nav-cta:hover { text-decoration: none; filter: brightness(1.08); }
+
+        /* HERO */
+        .hero {
+            position: relative;
+            padding: 6rem 1.25rem 5rem;
+            text-align: center;
+            overflow: hidden;
+        }
+        .hero::before {
+            content: "";
+            position: absolute; inset: -1px 0 0 0;
+            background:
+                radial-gradient(600px 300px at 50% 0%, rgba(99,102,241,0.25), transparent 70%),
+                radial-gradient(800px 400px at 80% 30%, rgba(34,211,238,0.18), transparent 70%);
+            pointer-events: none;
+        }
+        .hero-inner { position: relative; max-width: 1000px; margin: 0 auto; }
+        .pill {
+            display: inline-block;
+            padding: 0.35rem 0.85rem; margin-bottom: 1.25rem;
+            border-radius: 999px; font-size: 0.8rem;
+            background: rgba(34,211,238,0.08); color: var(--accent);
+            border: 1px solid rgba(34,211,238,0.25);
+        }
+        .hero h1 {
+            font-size: clamp(2.2rem, 5.5vw, 4rem);
+            line-height: 1.1; font-weight: 800; letter-spacing: -0.5px;
+        }
+        .gradient-text {
+            background: linear-gradient(135deg, var(--grad-2), var(--grad-1) 50%, var(--grad-3));
+            -webkit-background-clip: text; background-clip: text;
+            color: transparent;
+        }
+        .hero p.sub {
+            margin: 1.25rem auto 2rem;
+            max-width: 700px; color: var(--muted);
+            font-size: clamp(1rem, 1.6vw, 1.2rem);
+        }
+        .cta-row { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+        .btn {
+            padding: 0.9rem 1.6rem; border-radius: 12px; font-weight: 600; font-size: 1rem;
+            display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; border: none;
+            transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--grad-1), var(--grad-3));
+            color: white; box-shadow: 0 12px 30px rgba(99,102,241,0.3);
+        }
+        .btn-primary:hover { transform: translateY(-2px); filter: brightness(1.08); text-decoration: none; }
+        .btn-ghost {
+            background: rgba(255,255,255,0.04);
+            color: var(--text); border: 1px solid var(--border);
+        }
+        .btn-ghost:hover { background: rgba(255,255,255,0.08); text-decoration: none; }
+        .promo {
+            margin: 3.5rem auto 0; max-width: 900px;
+            aspect-ratio: 16 / 9; border-radius: 18px;
+            background:
+                linear-gradient(135deg, rgba(99,102,241,0.15), rgba(34,211,238,0.1)),
+                var(--panel-solid);
+            border: 1px solid var(--border);
+            display: grid; place-items: center;
+            color: var(--muted); position: relative;
+            overflow: hidden;
+        }
+        .promo::after {
+            content: ""; position: absolute; inset: 0;
+            background:
+                radial-gradient(400px 200px at 30% 30%, rgba(168,85,247,0.25), transparent 70%),
+                radial-gradient(400px 200px at 80% 70%, rgba(34,211,238,0.25), transparent 70%);
+            pointer-events: none;
+        }
+        .promo span { position: relative; z-index: 1; font-size: 0.95rem; }
+
+        /* SECTIONS */
+        section { padding: 5rem 1.25rem; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .section-head { text-align: center; margin-bottom: 3rem; }
+        .eyebrow {
+            display: inline-block; font-size: 0.8rem; letter-spacing: 2px;
+            text-transform: uppercase; color: var(--accent); margin-bottom: 0.6rem;
+        }
+        .section-head h2 {
+            font-size: clamp(1.8rem, 3.2vw, 2.6rem);
+            font-weight: 800; letter-spacing: -0.4px;
+        }
+        .section-head p { color: var(--muted); margin-top: 0.6rem; max-width: 700px; margin-inline: auto; }
+
+        /* CARDS GRID */
+        .grid {
+            display: grid; gap: 1.25rem;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        }
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+        }
+        .card:hover { transform: translateY(-3px); border-color: rgba(99,102,241,0.5); }
+        .icon {
+            width: 44px; height: 44px; border-radius: 12px;
+            display: grid; place-items: center;
+            background: linear-gradient(135deg, rgba(99,102,241,0.18), rgba(34,211,238,0.18));
+            color: var(--accent); font-size: 1.3rem; margin-bottom: 1rem;
+            border: 1px solid rgba(99,102,241,0.3);
+        }
+        .card h3 { font-size: 1.1rem; margin-bottom: 0.5rem; }
+        .card p { color: var(--muted); font-size: 0.95rem; }
+
+        /* TWO-COL */
+        .two-col {
+            display: grid; gap: 1.5rem;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        }
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.75rem;
+        }
+        .panel h3 { font-size: 1.15rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.6rem; }
+        .panel ul { list-style: none; padding: 0; }
+        .panel li {
+            padding: 0.55rem 0 0.55rem 1.5rem; position: relative;
+            border-bottom: 1px dashed rgba(255,255,255,0.06); color: var(--muted);
+        }
+        .panel li:last-child { border-bottom: none; }
+        .panel li::before {
+            content: "›"; position: absolute; left: 0.25rem; top: 0.45rem;
+            color: var(--accent); font-weight: 700;
+        }
+        .panel li strong { color: var(--text); }
+
+        /* LOOP STRATEGY */
+        .loop-grid {
+            display: grid; gap: 1rem;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            margin-top: 1rem;
+        }
+        .loop-step {
+            position: relative;
+            background: var(--panel); border: 1px solid var(--border);
+            border-radius: 14px; padding: 1.4rem 1.25rem;
+        }
+        .loop-step .num {
+            font-size: 0.75rem; font-weight: 700; letter-spacing: 1.5px;
+            color: var(--accent); text-transform: uppercase;
+        }
+        .loop-step h4 { font-size: 1.05rem; margin: 0.4rem 0 0.5rem; }
+        .loop-step p { color: var(--muted); font-size: 0.9rem; }
+
+        /* DOS / DONTS */
+        .dos-donts { display: grid; gap: 1.25rem; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+        .dos, .donts { padding: 1.75rem; border-radius: 16px; border: 1px solid var(--border); background: var(--panel); }
+        .dos h3, .donts h3 { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; }
+        .dos h3 { color: var(--good); }
+        .donts h3 { color: var(--bad); }
+        .dos li, .donts li { padding: 0.5rem 0 0.5rem 1.6rem; position: relative; color: var(--muted); list-style: none; }
+        .dos li::before { content: "✓"; color: var(--good); position: absolute; left: 0.25rem; font-weight: 700; }
+        .donts li::before { content: "✕"; color: var(--bad); position: absolute; left: 0.25rem; font-weight: 700; }
+
+        /* DISCLAIMER */
+        .disclaimer {
+            background: linear-gradient(135deg, rgba(251,191,36,0.06), rgba(248,113,113,0.06));
+            border: 1px solid rgba(251,191,36,0.3);
+            border-radius: 16px; padding: 2rem;
+            color: var(--muted);
+        }
+        .disclaimer h3 { color: var(--warn); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
+
+        /* COMMUNITY */
+        .community-row { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center; }
+        .chip {
+            padding: 0.85rem 1.25rem; border-radius: 12px;
+            background: var(--panel); border: 1px solid var(--border);
+            display: inline-flex; align-items: center; gap: 0.55rem; color: var(--text);
+        }
+        .chip:hover { border-color: var(--accent); text-decoration: none; }
+
+        /* FOOTER */
+        footer {
+            border-top: 1px solid var(--border);
+            padding: 2.5rem 1.25rem;
+            background: rgba(6, 7, 13, 0.6);
+        }
+        .footer-inner {
+            max-width: 1200px; margin: 0 auto;
+            display: flex; flex-wrap: wrap; gap: 1rem; justify-content: space-between; align-items: center;
+            color: var(--muted); font-size: 0.9rem;
+        }
+        .footer-links { display: flex; gap: 1rem; flex-wrap: wrap; }
+
+        /* MISC */
+        .alt-bg { background: linear-gradient(180deg, transparent, rgba(13,15,26,0.6) 30%, transparent); }
+        @media (max-width: 720px) {
+            .nav-links { display: none; }
+            .hero { padding: 4rem 1rem 3rem; }
+            section { padding: 3.5rem 1rem; }
+        }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>PrizePicks AI Analyzer</h1>
-        <p>Real-time AI-powered sports prop analysis</p>
-    </div>
 
-    <div class="stats-bar">
-        <div class="stat">
-            <div class="stat-value" id="totalPicks">0</div>
-            <div class="stat-label">Today's Picks</div>
+<!-- NAV -->
+<nav class="nav">
+    <div class="nav-inner">
+        <div class="brand">
+            <div class="brand-mark"></div>
+            <span>MLB Show 26 <span style="color: var(--muted); font-weight: 500;">Market Bot</span></span>
         </div>
-        <div class="stat">
-            <div class="stat-value">78%</div>
-            <div class="stat-label">Avg Confidence</div>
+        <div class="nav-links">
+            <a href="#features">Features</a>
+            <a href="#prereqs">Prerequisites</a>
+            <a href="#emulator">Emulator</a>
+            <a href="#setup">Setup</a>
+            <a href="#loop">Loop</a>
+            <a href="#community">Community</a>
         </div>
-        <div class="stat">
-            <div class="stat-value">5m</div>
-            <div class="stat-label">Update Interval</div>
+        <a class="nav-cta" href="#download">Download Free</a>
+    </div>
+</nav>
+
+<!-- HERO -->
+<header class="hero" id="top">
+    <div class="hero-inner">
+        <span class="pill">Free Access · Authorized Test Environments Only</span>
+        <h1>MLB The Show 26 <br><span class="gradient-text">Auto Market Bot</span></h1>
+        <p class="sub">
+            Your personal MLB The Show 26 auto-trading bot to maximize stubs — now free for use.
+            Open documentation, transparent design, and a community-supported toolkit for studying
+            virtual marketplace dynamics in approved test environments.
+        </p>
+        <div class="cta-row">
+            <a class="btn btn-primary" id="download" href="#setup">⬇  Download the Bot</a>
+            <a class="btn btn-ghost" href="#features">Explore Features</a>
+        </div>
+        <div class="promo">
+            <span>▶  Promo video / preview placeholder</span>
         </div>
     </div>
+</header>
 
+<!-- WHATS NEW -->
+<section id="features">
     <div class="container">
-        <div class="refresh-notice">
-            Data updates every 5 minutes. Last updated: <span id="lastUpdate">Loading...</span>
+        <div class="section-head">
+            <span class="eyebrow">What's New</span>
+            <h2>Built for reliability, designed to stay out of your way</h2>
+            <p>The latest improvements focus on autonomy, accuracy and uptime — so the bot can do its job while you do yours.</p>
         </div>
-
-        <div id="picksContainer" class="picks-grid">
-            <div class="loading">Loading today's picks...</div>
+        <div class="grid">
+            <div class="card"><div class="icon">⟳</div><h3>Seamless Auto-Updates</h3><p>The bot checks for updates on launch and patches itself via the cloud.</p></div>
+            <div class="card"><div class="icon">◐</div><h3>Runs in the Background</h3><p>Operates autonomously without taking over your keyboard or mouse.</p></div>
+            <div class="card"><div class="icon">⇄</div><h3>Parallel Buy & Sell Orders</h3><p>Sell orders can be placed during the buy phase to keep listings competitive.</p></div>
+            <div class="card"><div class="icon">⌖</div><h3>Direct Price Reading</h3><p>Reads stub prices directly from the companion app UI rather than relying on OCR.</p></div>
+            <div class="card"><div class="icon">⛨</div><h3>Rock-Solid Reliability</h3><p>Error handling and state tracking recover from app hangs and network hiccups.</p></div>
+            <div class="card"><div class="icon">◆</div><h3>MLB Cards & Sponsorships</h3><p>Works with Diamond equipment, MLB Live Series cards and Sponsorships.</p></div>
+            <div class="card"><div class="icon">▶</div><h3>Quick Setup</h3><p>An installer script simplifies initial configuration so you can get running fast.</p></div>
+            <div class="card"><div class="icon">☾</div><h3>Humanized Sleep Schedules</h3><p>Set active hours and random pauses for more human-like behavior.</p></div>
+            <div class="card"><div class="icon">⊟</div><h3>Sell Duplicates Utility</h3><p>A dedicated mode that sells duplicate cards while keeping one copy.</p></div>
         </div>
     </div>
+</section>
 
-    <div class="last-updated" id="lastUpdatedFixed"></div>
+<!-- PREREQUISITES -->
+<section id="prereqs" class="alt-bg">
+    <div class="container">
+        <div class="section-head">
+            <span class="eyebrow">Prerequisites</span>
+            <h2>What you need before getting started</h2>
+        </div>
+        <div class="two-col">
+            <div class="panel">
+                <h3>🖥  System Requirements</h3>
+                <ul>
+                    <li><strong>Windows 10 or 11</strong> — 64-bit PC or laptop.</li>
+                    <li><strong>Android emulator</strong> — recommended emulator and download links provided in our Discord.</li>
+                    <li><strong>MLB The Show Companion App</strong> — installed via Google Play Store inside the emulator.</li>
+                </ul>
+            </div>
+            <div class="panel">
+                <h3>📱  App Setup</h3>
+                <ul>
+                    <li>Currently supported item types: <strong>Diamond equipment, Sponsorships, and MLB Live Series cards</strong>.</li>
+                    <li>The bot buys Diamond equipment from your <strong>favorites</strong> and MLB cards from your <strong>watchlist</strong> — tap the heart icon in the app to add items.</li>
+                    <li>Items in your inventory will be <strong>automatically listed for sale</strong>.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</section>
 
-    <script>
-        function formatTimestamp(timestamp) {
-            return new Date(timestamp).toLocaleString('en-US', {
-                hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
-            });
-        }
+<!-- EMULATOR SETTINGS -->
+<section id="emulator">
+    <div class="container">
+        <div class="section-head">
+            <span class="eyebrow">Emulator Settings</span>
+            <h2>Recommended configuration</h2>
+            <p>Dial in these settings to give the bot the most stable surface to operate on.</p>
+        </div>
+        <div class="two-col">
+            <div class="panel">
+                <h3>🎨  Graphics & Display</h3>
+                <ul>
+                    <li><strong>Vulkan</strong> graphics renderer.</li>
+                    <li><strong>Tablet mode</strong> at <strong>1920×1080</strong>, <strong>280 DPI</strong>.</li>
+                    <li>Optional: <strong>dynamic frame rate</strong> for background running.</li>
+                </ul>
+            </div>
+            <div class="panel">
+                <h3>📲  Device Model</h3>
+                <ul>
+                    <li>Emulate a <strong>Samsung Galaxy S20 FE</strong>.</li>
+                </ul>
+            </div>
+            <div class="panel">
+                <h3>⚙  Other Settings</h3>
+                <ul>
+                    <li>Remember window position.</li>
+                    <li>Enable writable system disk.</li>
+                    <li>Custom cursor enabled.</li>
+                    <li>Disable PC hibernation while the emulator is running.</li>
+                </ul>
+            </div>
+            <div class="panel">
+                <h3>🔌  ADB Port Check</h3>
+                <ul>
+                    <li>The emulator's ADB port must be <strong>16384</strong>.</li>
+                    <li>If different, update the value in the bot configuration to match.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</section>
 
-        function loadPicks() {
-            fetch('picks.json')
-                .then(response => response.json())
-                .then(data => {
-                    const container = document.getElementById('picksContainer');
-                    const totalPicksEl = document.getElementById('totalPicks');
-                    const lastUpdateEl = document.getElementById('lastUpdate');
-                    const lastUpdatedFixedEl = document.getElementById('lastUpdatedFixed');
+<!-- CORE FEATURES -->
+<section id="core" class="alt-bg">
+    <div class="container">
+        <div class="section-head">
+            <span class="eyebrow">Core Features</span>
+            <h2>How the bot works</h2>
+        </div>
+        <div class="grid">
+            <div class="card"><div class="icon">★</div><h3>Targeted Buying</h3><p>Places buy orders exclusively for favorited or watchlisted items — never random inventory.</p></div>
+            <div class="card"><div class="icon">∑</div><h3>Profit Gap Math</h3><p>Reads current stub prices and calculates profit gaps to make smart buy decisions.</p></div>
+            <div class="card"><div class="icon">↺</div><h3>Order Top-Up</h3><p>Detects when buy orders are running low and replaces them automatically.</p></div>
+            <div class="card"><div class="icon">⏸</div><h3>Stub-Aware Pausing</h3><p>Pauses bidding when the stub balance is depleted to avoid getting stuck.</p></div>
+            <div class="card"><div class="icon">⇅</div><h3>Order Revisions</h3><p>Continuously revises existing buy and sell orders to stay competitive in the market.</p></div>
+            <div class="card"><div class="icon">📦</div><h3>Inventory Scanning</h3><p>Scans inventory for newly acquired cards and equipment, then lists them for sale.</p></div>
+            <div class="card"><div class="icon">∞</div><h3>Continuous Operation</h3><p>Designed to run continuously until manually stopped or until configured limits are reached.</p></div>
+        </div>
+    </div>
+</section>
 
-                    if (data.status === 'error') {
-                        container.innerHTML = '<div class="error">Error loading picks. Please refresh.</div>';
-                        return;
-                    }
+<!-- SETUP & CONFIGURATION -->
+<section id="setup">
+    <div class="container">
+        <div class="section-head">
+            <span class="eyebrow">Setup & Configuration</span>
+            <h2>From first launch to fully tuned</h2>
+        </div>
+        <div class="two-col">
+            <div class="panel">
+                <h3>🚀  First Launch</h3>
+                <ul>
+                    <li>Run <strong>StubBot.exe</strong>.</li>
+                    <li>Create a username and password — paste your license key to register. <em>(Free version: no license key required.)</em></li>
+                    <li>Credentials are stored securely for future logins.</li>
+                    <li>Press <strong>F10</strong> at any time to pause or resume the bot.</li>
+                </ul>
+            </div>
+            <div class="panel">
+                <h3>🎛  Configuration Panel</h3>
+                <ul>
+                    <li>Toggle markets: <strong>Equipment, Sponsorships, MLB cards</strong>.</li>
+                    <li>Set custom <strong>profit margins</strong> per item type.</li>
+                    <li>Control inventory saturation with <strong>Max Buy Orders per Item</strong>.</li>
+                    <li>Configure <strong>active hours, sleep limits, and random pauses</strong> for humanization.</li>
+                    <li>Choose your console and set the emulator's <strong>ADB port</strong>.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</section>
 
-                    totalPicksEl.textContent = data.totalPicks;
-                    lastUpdateEl.textContent = formatTimestamp(data.timestamp);
-                    lastUpdatedFixedEl.textContent = `Updated: ${formatTimestamp(data.timestamp)}`;
+<!-- LOOP STRATEGY -->
+<section id="loop" class="alt-bg">
+    <div class="container">
+        <div class="section-head">
+            <span class="eyebrow">Bot Loop Strategy</span>
+            <h2>The five-step master loop</h2>
+            <p>The standard cycle the bot runs through, end to end, before sleeping and starting over.</p>
+        </div>
+        <div class="loop-grid">
+            <div class="loop-step"><div class="num">Step 01</div><h4>Submit Buy Orders</h4><p>Scrolls through favorited items and places buy orders.</p></div>
+            <div class="loop-step"><div class="num">Step 02</div><h4>Revise Buy Orders</h4><p>Reviews existing bids and updates them when they're no longer competitive.</p></div>
+            <div class="loop-step"><div class="num">Step 03</div><h4>Check Inventory</h4><p>Scans for newly acquired items and lists them for sale.</p></div>
+            <div class="loop-step"><div class="num">Step 04</div><h4>Revise Sell Orders</h4><p>Reviews your listings and undercuts the market where needed.</p></div>
+            <div class="loop-step"><div class="num">Step 05</div><h4>Sleep & Repeat</h4><p>Waits a randomized duration for humanization, then returns to Step 1.</p></div>
+        </div>
+    </div>
+</section>
 
-                    if (data.picks.length === 0) {
-                        container.innerHTML = '<div class="loading">No active picks. Check back closer to game time.</div>';
-                        return;
-                    }
+<!-- ADVANCED MODES -->
+<section id="modes">
+    <div class="container">
+        <div class="section-head">
+            <span class="eyebrow">Advanced Execution Modes</span>
+            <h2>Optional modes for fine-grained control</h2>
+            <p>Accessible from the dropdown menu in the bot UI.</p>
+        </div>
+        <div class="grid">
+            <div class="card"><div class="icon">◉</div><h3>Standard Master Loop</h3><p>Runs the full Steps 1–5 in order.</p></div>
+            <div class="card"><div class="icon">▶</div><h3>Start at Step 1–4</h3><p>Launches the loop from a specific step, useful for debugging or recovery.</p></div>
+            <div class="card"><div class="icon">↻</div><h3>Revise Buy Orders Only</h3><p>Continuously revises buy orders and nothing else.</p></div>
+            <div class="card"><div class="icon">↺</div><h3>Revise Sell Orders Only</h3><p>Continuously revises sell orders and nothing else.</p></div>
+            <div class="card"><div class="icon">⊟</div><h3>Sell Duplicates</h3><p>Scans inventory once and sells duplicates while keeping one copy of each item.</p></div>
+        </div>
+    </div>
+</section>
 
-                    container.innerHTML = data.picks.map(pick => `
-                        <div class="pick-card">
-                            <div class="player-name">${pick.player}</div>
-                            <div class="stat-type">${pick.statType}</div>
-                            <div class="prop-line">${pick.propLine}</div>
-                            
-                            <div class="analysis-section">
-                                <div class="recommendation">
-                                    <div>
-                                        <div style="font-size: 0.8rem; opacity: 0.7;">AI Recommends:</div>
-                                        <div class="pick-side ${pick.pick}">${pick.pick}</div>
-                                    </div>
-                                    <div class="confidence">
-                                        <div style="font-size: 0.8rem; opacity: 0.7;">Confidence</div>
-                                        <div class="confidence-value">${pick.confidence}%</div>
-                                        <div class="confidence-bar">
-                                            <div class="confidence-fill" style="width: ${pick.confidence}%"></div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="reasoning">💡 ${pick.reasoning}</div>
-                                <div style="margin-top: 0.5rem; font-size: 0.8rem; opacity: 0.7;">
-                                    Expected Value: +${pick.ev}%
-                                </div>
-                            </div>
-                        </div>
-                    `).join('');
-                })
-                .catch(error => {
-                    console.error('Error loading picks:', error);
-                    document.getElementById('picksContainer').innerHTML = 
-                        '<div class="error">Failed to load picks. Check console for details.</div>';
-                });
-        }
+<!-- DOS / DONTS -->
+<section class="alt-bg">
+    <div class="container">
+        <div class="section-head">
+            <span class="eyebrow">Do's & Don'ts</span>
+            <h2>Use the bot well</h2>
+        </div>
+        <div class="dos-donts">
+            <div class="dos">
+                <h3>✓ Do</h3>
+                <ul>
+                    <li>Manually update orders via the companion app, website or in-game.</li>
+                    <li>Place your own orders manually — the bot is designed to work alongside them.</li>
+                    <li>Keep your favorites and watchlist tidy and intentional.</li>
+                </ul>
+            </div>
+            <div class="donts">
+                <h3>✕ Don't</h3>
+                <ul>
+                    <li>Have large quantities of unsupported item orders (e.g., Unlockables, Stadiums) — it can confuse the bot.</li>
+                    <li>Run the bot on environments where automation isn't authorized.</li>
+                    <li>Share your local credentials or session data with anyone.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</section>
 
-        loadPicks();
-        setInterval(loadPicks, 30000); // Auto-refresh every 30 seconds
-    </script>
+<!-- KNOWN LIMITATIONS -->
+<section id="limitations">
+    <div class="container">
+        <div class="section-head">
+            <span class="eyebrow">Known Limitations</span>
+            <h2>What to expect</h2>
+        </div>
+        <div class="grid">
+            <div class="card"><div class="icon">☁</div><h3>SDS Server Dependency</h3><p>Bot performance depends on SDS server stability. The bot will refresh if the app becomes unresponsive.</p></div>
+            <div class="card"><div class="icon">🧤</div><h3>Sliding Mitts Unsupported</h3><p>Sliding mitts are not supported due to the lack of an inventory slot.</p></div>
+            <div class="card"><div class="icon">🏏</div><h3>Bats Are Ignored</h3><p>Bats are intentionally ignored by design.</p></div>
+        </div>
+    </div>
+</section>
+
+<!-- DISCLAIMER -->
+<section class="alt-bg">
+    <div class="container" style="max-width: 900px;">
+        <div class="disclaimer">
+            <h3>⚠  Safety & Legal Disclaimer</h3>
+            <p>
+                This website provides free documentation and downloads for an MLB The Show 26 auto-trading
+                tool intended only for use on approved test servers. Use on live servers without express
+                authorization may violate the game's Terms of Service. You are solely responsible for your
+                account. The site is not affiliated with MLB, Sony Interactive Entertainment or San Diego
+                Studio unless otherwise stated. Use responsibly.
+            </p>
+            <p style="margin-top: 0.75rem;">
+                The bot never asks for your game logins or personal data — all operations occur locally
+                inside an emulator on your own machine.
+            </p>
+        </div>
+    </div>
+</section>
+
+<!-- COMMUNITY -->
+<section id="community">
+    <div class="container">
+        <div class="section-head">
+            <span class="eyebrow">Support & Community</span>
+            <h2>Join the conversation</h2>
+            <p>Updates, troubleshooting, and discussion happen in the community channels.</p>
+        </div>
+        <div class="community-row">
+            <a class="chip" href="#">💬  Join the Discord</a>
+            <a class="chip" href="#">𝕏  Follow on X / Twitter</a>
+            <a class="chip" href="#">📜  Changelog</a>
+        </div>
+    </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+    <div class="footer-inner">
+        <div>
+            © <span id="year"></span> MLB Show 26 Market Bot · Free version — no purchase necessary.<br>
+            <span style="opacity: 0.7;">Not affiliated with MLB, SDS or any console manufacturers.</span>
+        </div>
+        <div class="footer-links">
+            <a href="#">Privacy Policy</a>
+            <a href="#">Terms of Use</a>
+            <a href="#top">Back to Top</a>
+        </div>
+    </div>
+</footer>
+
+<script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+</script>
+
 </body>
 </html>
