@@ -7,100 +7,132 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0a0a0f; color: #e9ecf1; line-height: 1.55; }
-        .header { background: linear-gradient(135deg, #003087 0%, #c8102e 100%); padding: 2rem; text-align: center; }
-        .header h1 { font-size: 2.2rem; font-weight: 700; }
-        .header p { font-size: 1rem; opacity: 0.9; margin-top: .25rem; }
-        .stats-bar { display: flex; flex-wrap: wrap; justify-content: center; gap: 2.5rem; padding: 1.25rem; background: #14141c; border-bottom: 1px solid #262634; }
-        .stat { text-align: center; }
-        .stat-value { font-size: 1.7rem; font-weight: 600; color: #f5b400; }
-        .stat-label { font-size: 0.85rem; opacity: 0.7; }
-        .container { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
-        .refresh-notice { text-align: center; padding: .75rem; background: #14141c; border-radius: 8px; margin-bottom: 1.5rem; font-size: 0.85rem; opacity: 0.85; }
-        .picks-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 1.25rem; }
-        .pick-card { background: #14141c; border: 1px solid #262634; border-radius: 12px; padding: 1.25rem; transition: border-color .2s, transform .2s; }
-        .pick-card:hover { border-color: #f5b400; transform: translateY(-3px); }
+        .header { background: linear-gradient(135deg, #003087 0%, #c8102e 100%); padding: 1.6rem; text-align: center; }
+        .header h1 { font-size: 2rem; font-weight: 700; }
+        .header p { font-size: 0.95rem; opacity: 0.9; margin-top: .25rem; }
+        .stats-bar { display: flex; flex-wrap: wrap; justify-content: center; gap: 2rem; padding: 1rem; background: #14141c; border-bottom: 1px solid #262634; }
+        .stat { text-align: center; min-width: 110px; }
+        .stat-value { font-size: 1.4rem; font-weight: 600; color: #f5b400; }
+        .stat-label { font-size: 0.78rem; opacity: 0.7; text-transform: uppercase; letter-spacing: .04em; }
+        .container { max-width: 1500px; margin: 0 auto; padding: 1.25rem; }
+        .meta-row { display: flex; justify-content: space-between; align-items: center; padding: .75rem 1rem; background: #14141c; border-radius: 8px; margin-bottom: 1rem; font-size: 0.85rem; flex-wrap: wrap; gap: .5rem; }
+        .notify-btn { background: #f5b400; color: #14141c; border: 0; padding: .4rem .8rem; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.8rem; }
+        .notify-btn:disabled { background: #2a2a35; color: #888; cursor: default; }
+        .tabs { display: flex; gap: .25rem; padding: 0 1.25rem; max-width: 1500px; margin: 0 auto; border-bottom: 1px solid #262634; }
+        .tab { padding: .75rem 1.25rem; background: transparent; border: 0; color: #aab; font-size: 0.95rem; font-weight: 600; cursor: pointer; border-bottom: 3px solid transparent; }
+        .tab.active { color: #f5b400; border-bottom-color: #f5b400; }
+        .tab .badge { display: inline-block; background: #c8102e; color: #fff; border-radius: 10px; padding: 0 .45rem; margin-left: .35rem; font-size: 0.72rem; font-weight: 700; }
+
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 1.1rem; }
+        .pick-card { background: #14141c; border: 1px solid #262634; border-radius: 12px; padding: 1.1rem; transition: border-color .2s, transform .15s; }
+        .pick-card:hover { border-color: #f5b400; transform: translateY(-2px); }
         .card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: .5rem; }
-        .player-name { font-size: 1.15rem; font-weight: 600; }
-        .player-meta { font-size: 0.8rem; opacity: 0.7; margin-top: 2px; }
-        .rarity { font-size: 0.7rem; padding: .15rem .5rem; border-radius: 4px; font-weight: 600; letter-spacing: .04em; }
+        .player-name { font-size: 1.08rem; font-weight: 600; }
+        .player-meta { font-size: 0.77rem; opacity: 0.7; margin-top: 2px; }
+        .rarity { font-size: 0.68rem; padding: .15rem .5rem; border-radius: 4px; font-weight: 600; letter-spacing: .04em; }
         .Diamond { background: rgba(110, 231, 255, 0.15); color: #6ee7ff; }
         .Gold { background: rgba(255, 196, 0, 0.15); color: #ffc400; }
         .Silver { background: rgba(200, 200, 215, 0.15); color: #c8c8d7; }
         .Bronze { background: rgba(195, 109, 50, 0.15); color: #c36d32; }
         .Common { background: rgba(150, 150, 150, 0.15); color: #aaa; }
-        .price-row { display: flex; justify-content: space-between; margin: 1rem 0 .5rem; font-size: 0.9rem; }
-        .price-cell { flex: 1; text-align: center; padding: .5rem; background: #0a0a0f; border-radius: 6px; margin: 0 .25rem; }
-        .price-cell .label { font-size: 0.7rem; opacity: 0.65; text-transform: uppercase; letter-spacing: .04em; }
-        .price-cell .value { font-size: 1.05rem; font-weight: 600; margin-top: .15rem; }
-        .profit { color: #2ecc71; }
+        .price-row { display: flex; justify-content: space-between; gap: .35rem; margin: .9rem 0 .4rem; font-size: 0.85rem; }
+        .price-cell { flex: 1; text-align: center; padding: .45rem; background: #0a0a0f; border-radius: 6px; }
+        .price-cell .label { font-size: 0.65rem; opacity: 0.65; text-transform: uppercase; letter-spacing: .04em; }
+        .price-cell .value { font-size: 1rem; font-weight: 600; margin-top: .15rem; }
+        .profit-pos { color: #2ecc71; }
+        .profit-neg { color: #ff6b6b; }
         .roi { color: #f5b400; }
-        .conf-row { display: flex; align-items: center; gap: .75rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #262634; }
-        .conf-label { font-size: 0.75rem; opacity: 0.7; }
-        .conf-bar { flex: 1; height: 8px; background: #262634; border-radius: 4px; overflow: hidden; }
+        .conf-row { display: flex; align-items: center; gap: .6rem; margin-top: .9rem; padding-top: .85rem; border-top: 1px solid #262634; }
+        .conf-label { font-size: 0.72rem; opacity: 0.7; }
+        .conf-bar { flex: 1; height: 7px; background: #262634; border-radius: 4px; overflow: hidden; }
         .conf-fill { height: 100%; background: linear-gradient(90deg, #c0392b, #f5b400, #2ecc71); }
-        .conf-value { font-weight: 700; min-width: 3.5em; text-align: right; }
-        .reasons { margin-top: .8rem; font-size: 0.82rem; opacity: 0.85; }
-        .reasons li { margin-left: 1rem; margin-top: .25rem; }
-        .loading, .error, .empty { text-align: center; padding: 3rem; font-size: 1rem; opacity: 0.8; }
+        .conf-value { font-weight: 700; min-width: 3.5em; text-align: right; font-size: 0.9rem; }
+        .reasons { margin-top: .7rem; font-size: 0.79rem; opacity: 0.85; }
+        .reasons li { margin-left: 1rem; margin-top: .2rem; }
+
+        /* Alerts tab */
+        .alert-row { display: flex; gap: 1rem; align-items: center; background: #14141c; border-left: 4px solid #f5b400; padding: .85rem 1rem; border-radius: 6px; margin-bottom: .6rem; }
+        .alert-row.hot    { border-left-color: #c8102e; }
+        .alert-row.warn   { border-left-color: #f5b400; }
+        .alert-row.info   { border-left-color: #6ee7ff; }
+        .alert-time { font-size: 0.75rem; opacity: 0.7; min-width: 95px; }
+        .alert-kind { font-size: 0.7rem; opacity: 0.8; text-transform: uppercase; padding: .15rem .5rem; border-radius: 4px; background: #262634; min-width: 90px; text-align: center; }
+        .alert-msg { flex: 1; }
+        .alert-msg .text { font-weight: 600; }
+        .alert-msg .detail { font-size: 0.78rem; opacity: 0.75; margin-top: .15rem; }
+
+        .empty, .loading, .error { text-align: center; padding: 3rem; opacity: 0.8; }
         .error { color: #ff6b6b; }
-        @media (max-width: 768px) { .header h1 { font-size: 1.6rem; } .stats-bar { gap: 1rem; } .picks-grid { grid-template-columns: 1fr; } }
+        .hidden { display: none; }
+        @media (max-width: 768px) { .header h1 { font-size: 1.5rem; } .grid { grid-template-columns: 1fr; } .alert-row { flex-direction: column; align-items: flex-start; gap: .35rem; } }
     </style>
 </head>
 <body>
     <div class="header">
         <h1>MLB The Show 26 Marketplace Advisor</h1>
-        <p>Top flip opportunities ranked by net profit and confidence</p>
+        <p>Patient flips · Gold-to-Diamond upgrade bets · Real-time alerts</p>
     </div>
 
     <div class="stats-bar">
-        <div class="stat">
-            <div class="stat-value" id="totalPicks">—</div>
-            <div class="stat-label">Qualifying Picks</div>
-        </div>
-        <div class="stat">
-            <div class="stat-value" id="avgConf">—</div>
-            <div class="stat-label">Avg Confidence</div>
-        </div>
-        <div class="stat">
-            <div class="stat-value" id="topProfit">—</div>
-            <div class="stat-label">Best Net / Flip</div>
-        </div>
+        <div class="stat"><div class="stat-value" id="statFlips">—</div><div class="stat-label">Flip Picks</div></div>
+        <div class="stat"><div class="stat-value" id="statUpgrades">—</div><div class="stat-label">Upgrade Bets</div></div>
+        <div class="stat"><div class="stat-value" id="statAlerts">—</div><div class="stat-label">Active Alerts</div></div>
+        <div class="stat"><div class="stat-value" id="statBest">—</div><div class="stat-label">Best Net / Flip</div></div>
+        <div class="stat"><div class="stat-value" id="statSource">—</div><div class="stat-label">Stats Source</div></div>
+    </div>
+
+    <div class="tabs">
+        <button class="tab active" data-tab="flips">Flips</button>
+        <button class="tab" data-tab="upgrades">Upgrade Bets</button>
+        <button class="tab" data-tab="alerts">Alerts <span class="badge hidden" id="alertBadge">0</span></button>
     </div>
 
     <div class="container">
-        <div class="refresh-notice">
-            Generated by <code>python run_advisor.py export</code>. Last updated:
-            <span id="lastUpdate">loading…</span>
+        <div class="meta-row">
+            <div>Last updated: <span id="lastUpdate">loading…</span> · mode: <span id="mode">—</span></div>
+            <button class="notify-btn" id="notifyBtn">Enable Browser Alerts</button>
         </div>
-        <div id="picksContainer" class="picks-grid">
-            <div class="loading">Loading picks…</div>
-        </div>
+
+        <div id="tab-flips"></div>
+        <div id="tab-upgrades" class="hidden"></div>
+        <div id="tab-alerts" class="hidden"></div>
     </div>
 
     <script>
+        let knownAlertIds = new Set(JSON.parse(localStorage.getItem("knownAlertIds") || "[]"));
+
         function fmt(n) { return Number(n).toLocaleString(); }
-        function fmtTime(iso) {
-            try { return new Date(iso).toLocaleString(); } catch { return iso; }
+        function signed(n) { return (n >= 0 ? "+" : "") + fmt(n); }
+        function fmtTime(iso) { try { return new Date(iso).toLocaleString(); } catch { return iso; } }
+        function fmtUnix(ts) { return new Date(ts * 1000).toLocaleString(undefined, {month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit"}); }
+
+        function setupTabs() {
+            document.querySelectorAll(".tab").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    document.querySelectorAll(".tab").forEach(b => b.classList.remove("active"));
+                    btn.classList.add("active");
+                    ["flips", "upgrades", "alerts"].forEach(t => {
+                        document.getElementById("tab-" + t).classList.toggle("hidden", t !== btn.dataset.tab);
+                    });
+                });
+            });
         }
 
-        function render(data) {
-            const container = document.getElementById("picksContainer");
-            document.getElementById("lastUpdate").textContent = fmtTime(data.timestamp);
-            document.getElementById("totalPicks").textContent = data.totalPicks ?? 0;
+        function setupNotifications() {
+            const btn = document.getElementById("notifyBtn");
+            if (!("Notification" in window)) { btn.disabled = true; btn.textContent = "Browser Alerts Unsupported"; return; }
+            const refresh = () => {
+                if (Notification.permission === "granted") { btn.disabled = true; btn.textContent = "Browser Alerts Enabled"; }
+                else if (Notification.permission === "denied") { btn.disabled = true; btn.textContent = "Browser Alerts Blocked"; }
+            };
+            refresh();
+            btn.addEventListener("click", () => { Notification.requestPermission().then(refresh); });
+        }
 
-            if (!data.picks || data.picks.length === 0) {
-                container.innerHTML = '<div class="empty">No qualifying picks. Run <code>python run_advisor.py scan</code> then <code>export</code>.</div>';
-                document.getElementById("avgConf").textContent = "—";
-                document.getElementById("topProfit").textContent = "—";
-                return;
-            }
-
-            const avg = data.picks.reduce((a, p) => a + p.confidence, 0) / data.picks.length;
-            document.getElementById("avgConf").textContent = avg.toFixed(0) + "%";
-            const best = Math.max(...data.picks.map(p => p.profit));
-            document.getElementById("topProfit").textContent = fmt(best);
-
-            container.innerHTML = data.picks.map(p => `
+        function renderFlips(picks) {
+            const root = document.getElementById("tab-flips");
+            if (!picks.length) { root.innerHTML = '<div class="empty">No qualifying flip picks at current thresholds.</div>'; return; }
+            root.innerHTML = '<div class="grid">' + picks.map(p => `
                 <div class="pick-card">
                     <div class="card-header">
                         <div>
@@ -110,45 +142,117 @@
                         <div class="rarity ${p.rarity}">${p.rarity}</div>
                     </div>
                     <div class="price-row">
-                        <div class="price-cell">
-                            <div class="label">Buy @</div>
-                            <div class="value">${fmt(p.buyAt)}</div>
-                        </div>
-                        <div class="price-cell">
-                            <div class="label">Sell @</div>
-                            <div class="value">${fmt(p.sellAt)}</div>
-                        </div>
-                        <div class="price-cell">
-                            <div class="label">Net / Flip</div>
-                            <div class="value profit">${fmt(p.profit)}</div>
-                        </div>
-                        <div class="price-cell">
-                            <div class="label">ROI</div>
-                            <div class="value roi">${p.roi.toFixed(1)}%</div>
-                        </div>
+                        <div class="price-cell"><div class="label">Buy @</div><div class="value">${fmt(p.buyAt)}</div></div>
+                        <div class="price-cell"><div class="label">Sell @</div><div class="value">${fmt(p.sellAt)}</div></div>
+                        <div class="price-cell"><div class="label">Net / Flip</div><div class="value ${p.profit >= 0 ? "profit-pos" : "profit-neg"}">${signed(p.profit)}</div></div>
+                        <div class="price-cell"><div class="label">ROI</div><div class="value roi">${p.roi.toFixed(1)}%</div></div>
                     </div>
                     <div class="conf-row">
                         <span class="conf-label">Confidence</span>
                         <div class="conf-bar"><div class="conf-fill" style="width:${p.confidence}%"></div></div>
                         <span class="conf-value">${p.confidence}/100</span>
                     </div>
-                    <ul class="reasons">
-                        ${p.reasons.map(r => `<li>${r}</li>`).join("")}
-                    </ul>
+                    <ul class="reasons">${p.reasons.map(r => `<li>${r}</li>`).join("")}</ul>
+                </div>
+            `).join("") + "</div>";
+        }
+
+        function renderUpgrades(bets) {
+            const root = document.getElementById("tab-upgrades");
+            if (!bets.length) { root.innerHTML = '<div class="empty">No qualifying upgrade bets. Try running <code>upgrades</code> after building a few snapshots.</div>'; return; }
+            root.innerHTML = '<div class="grid">' + bets.map(b => `
+                <div class="pick-card">
+                    <div class="card-header">
+                        <div>
+                            <div class="player-name">${b.card}</div>
+                            <div class="player-meta">${b.team} · ${b.position} · ${b.ovr} OVR ${b.rarity} · ${b.series}</div>
+                        </div>
+                        <div class="rarity ${b.rarity}">${b.rarity}</div>
+                    </div>
+                    <div class="price-row">
+                        <div class="price-cell"><div class="label">Buy ${b.quantity}× @</div><div class="value">${fmt(b.targetBuy)}</div></div>
+                        <div class="price-cell"><div class="label">Total Cost</div><div class="value">${fmt(b.costTotal)}</div></div>
+                        <div class="price-cell"><div class="label">Est Diamond$</div><div class="value">${fmt(b.estDiamondPrice)}</div></div>
+                    </div>
+                    <div class="price-row">
+                        <div class="price-cell"><div class="label">If Bumped</div><div class="value profit-pos">${signed(b.expectedProfitTotal)}</div></div>
+                        <div class="price-cell"><div class="label">If Not</div><div class="value profit-neg">${signed(b.downsideTotal)}</div></div>
+                        <div class="price-cell"><div class="label">Bump %</div><div class="value roi">${b.upgradeScore}/100</div></div>
+                    </div>
+                    <div class="conf-row">
+                        <span class="conf-label">Confidence</span>
+                        <div class="conf-bar"><div class="conf-fill" style="width:${b.confidence}%"></div></div>
+                        <span class="conf-value">${b.confidence}/100</span>
+                    </div>
+                    <ul class="reasons">${b.reasons.map(r => `<li>${r}</li>`).join("")}</ul>
+                </div>
+            `).join("") + "</div>";
+        }
+
+        function renderAlerts(alerts) {
+            const root = document.getElementById("tab-alerts");
+            const badge = document.getElementById("alertBadge");
+            if (!alerts.length) {
+                root.innerHTML = '<div class="empty">No active alerts. The advisor fires alerts on price drops &gt;15% vs 7d avg or flips with &gt;25% ROI.</div>';
+                badge.classList.add("hidden");
+                return;
+            }
+            badge.textContent = alerts.length;
+            badge.classList.remove("hidden");
+            root.innerHTML = alerts.map(a => `
+                <div class="alert-row ${a.severity}">
+                    <div class="alert-time">${fmtUnix(a.triggeredAt)}</div>
+                    <div class="alert-kind">${a.kind.replace("_", " ")}</div>
+                    <div class="alert-msg">
+                        <div class="text">${a.message}</div>
+                        ${a.detail ? `<div class="detail">${a.detail}</div>` : ""}
+                    </div>
                 </div>
             `).join("");
+        }
+
+        function popNotificationsForNewAlerts(alerts) {
+            if (Notification.permission !== "granted") return;
+            const updated = new Set(knownAlertIds);
+            alerts.forEach(a => {
+                if (a.id == null || knownAlertIds.has(a.id)) return;
+                new Notification("MLB The Show alert: " + a.kind.replace("_", " "), {
+                    body: a.message + (a.detail ? "\n" + a.detail : ""),
+                });
+                updated.add(a.id);
+            });
+            knownAlertIds = updated;
+            localStorage.setItem("knownAlertIds", JSON.stringify([...knownAlertIds]));
         }
 
         function load() {
             fetch("picks.json", { cache: "no-store" })
                 .then(r => r.json())
-                .then(render)
+                .then(data => {
+                    document.getElementById("lastUpdate").textContent = fmtTime(data.timestamp);
+                    document.getElementById("mode").textContent = data.mode || "—";
+                    document.getElementById("statFlips").textContent = data.totalFlips ?? 0;
+                    document.getElementById("statUpgrades").textContent = data.totalUpgrades ?? 0;
+                    document.getElementById("statAlerts").textContent = data.totalAlerts ?? 0;
+                    document.getElementById("statSource").textContent =
+                        data.stats_source === "mlb_stats_api" ? "MLB API" : (data.stats_source || "—");
+                    const flips = data.flips || [];
+                    const best = flips.length ? Math.max(...flips.map(p => p.profit)) : 0;
+                    document.getElementById("statBest").textContent = best ? fmt(best) : "—";
+
+                    renderFlips(flips);
+                    renderUpgrades(data.upgrades || []);
+                    renderAlerts(data.alerts || []);
+                    popNotificationsForNewAlerts(data.alerts || []);
+                })
                 .catch(err => {
-                    document.getElementById("picksContainer").innerHTML =
+                    document.getElementById("tab-flips").innerHTML =
                         '<div class="error">Failed to load picks.json — ' + err + '</div>';
                 });
         }
 
+        setupTabs();
+        setupNotifications();
         load();
         setInterval(load, 30000);
     </script>

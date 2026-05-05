@@ -1,23 +1,33 @@
 # MLB The Show 26 Marketplace Advisor
 
-A personal-use tool for analyzing the MLB The Show 26 community marketplace
-and surfacing flip opportunities ranked by **net profit after tax** and a
-**confidence score** built from spread, floor cushion, liquidity, and price
-trend.
+A personal-use tool for the MLB The Show 26 community marketplace. Three
+strategies in one dashboard:
 
-This is an **advisor**, not a bot. It tells you what to buy, what to sell,
-and why. You execute the trades manually. Automating purchases or sales
-violates The Show's TOS and will get your account banned — don't do it.
+1. **Patient flips** — buy bids posted below market, sell asks posted above
+   market. Limit orders that fill on dips and pops, ranked by net profit
+   after the 10% tax.
+2. **Gold-to-Diamond upgrade bets** — identifies 80-84 OVR Live Series
+   Golds whose real-life player is hot in the last 14 days (per the MLB
+   Stats API). The play is to buy ~20 copies and hold for a roster update;
+   if the bump hits, the stack is worth 5-20× more.
+3. **Alerts** — fires on price drops >15% vs the rolling 7-day average and
+   on flips with >25% net ROI. Browser notifications when new alerts land.
 
-## What it does
+**Advisory only.** Automating buys/sells violates The Show TOS. Place the
+orders yourself.
 
-- Pulls the public listings feed from `mlb26.theshow.com/apis/listings.json`
-- Computes the actual stub profit per flip after the 10% sell tax, using
-  first-in-line bid/ask placement
-- Snapshots prices to a local SQLite DB so it can detect trends
-- Scores each card 0–100 for confidence, with reasons you can read
-- Falls back to deterministic synthetic data when the API isn't reachable,
-  so the toolchain works offline for development
+## What it pulls
+
+- **MLB The Show community marketplace** (`mlb26.theshow.com/apis/listings.json`)
+  — public listings feed, paginated by OVR descending. The advisor handles
+  the API's rate limit (403s on rapid pagination) by retrying with backoff
+  and skipping pages that fail.
+- **MLB Stats API** (`statsapi.mlb.com`) — official, public, no auth. We
+  pull season-to-date and last-14-days hitting/pitching stats for every
+  active player; the upgrade scorer compares the two to find hot streaks.
+
+If either is unreachable the tool falls back to deterministic synthetic
+data so you can still develop and demo against it.
 
 ## Install
 
@@ -28,59 +38,96 @@ pip install -r requirements.txt
 ## Usage
 
 ```bash
-# Fetch the market, snapshot it, and print top picks
+# Patient-mode flips on the top of the market (Diamonds)
 python run_advisor.py scan
 
-# See last snapshot's top picks without hitting the API
-python run_advisor.py top --limit 10
+# Gold tier upgrade bets — fetches from page 11 where Golds start
+python run_advisor.py upgrades --quantity 20
 
-# Drill into a single card
+# Active price-drop / high-ROI alerts
+python run_advisor.py alerts
+
+# Drill into one card
 python run_advisor.py why "Judge"
 
-# Build price history (snapshot every 15 minutes for 4 rounds)
-python run_advisor.py track --interval 900 --rounds 4
+# Build price history (snapshot every 15 min). Better trends = better picks.
+python run_advisor.py track --interval 900
 
-# Write picks.json for the dashboard, then open index.html in a browser
+# Write picks.json for the dashboard
 python run_advisor.py export
 ```
 
-## Confidence score breakdown
+## Running the website
 
-The score (0–100) is a weighted sum of:
+```bash
+python run_advisor.py scan
+python run_advisor.py upgrades   # populate gold-tier snapshots
+python run_advisor.py export
+python -m http.server 8000
+```
+Then open http://localhost:8000. Click "Enable Browser Alerts" once for
+push notifications when new alerts land.
+
+## How the scoring works
+
+### Flip confidence (0–100)
 
 | Signal           | Weight | What it captures                                     |
 |------------------|:------:|------------------------------------------------------|
-| ROI              | 40%    | Net profit / buy price, saturated at 30%             |
-| Floor cushion    | 20%    | How close the buy price is to the quick-sell floor   |
-| Liquidity proxy  | 20%    | OVR / rarity tier — diamonds fill faster             |
+| ROI              | 40%    | Net profit / target buy, saturated at 30%            |
+| Floor cushion    | 20%    | How close target buy is to quick-sell floor          |
+| Liquidity proxy  | 20%    | Rarity tier — diamonds fill faster                   |
 | Price trend      | 15%    | Buy-price drift across recent snapshots              |
-| Series bonus     | flat   | Topps Now / All-Star / Awards / Postseason / Finest  |
+| Series boost     | flat   | Topps Now / All-Star / Awards / Postseason / Finest  |
 
-The first time you run `scan` there's no history, so trend gets a neutral
-score. After ~3 snapshots the trend signal kicks in — that's why `track`
-on an interval makes recommendations meaningfully better.
+Trend kicks in once you have ~3 snapshots, so run `track` for a few hours
+before trusting confidence numbers.
+
+### Upgrade bet confidence (0–100)
+
+| Signal              | Weight | What it captures                                  |
+|---------------------|:------:|---------------------------------------------------|
+| Bump likelihood     | 55%    | Real-life hot streak + closeness to 85 OVR line   |
+| Profit factor       | 30%    | Expected profit per card vs cost basis            |
+| Liquidity           | 15%    | Order book depth proxy                            |
+
+The bump-likelihood sub-score is itself 55% **OVR proximity** (84 → high,
+80 → low) and 45% **hot streak** (recent OPS or ERA improvement vs season
+norm). Live Series tag required — Topps Now / Awards / etc. are static
+snapshot cards that don't move on roster updates.
+
+## Pricing strategy
+
+- **Patient mode (default)** — bid 8% below current ask, ask 6% above
+  current ask (with rolling-history adjustments). Both orders sit and fill
+  when the market moves.
+- **Quick mode** — `--mode quick`. First-in-line bid/ask. Fills fast but
+  competes with everyone running the same strategy.
+- **Upgrade mode** — target buy = 8% under current ask, never below quick-sell.
+  Sit through 1-2 roster updates.
 
 ## Files
 
 ```
 advisor/
-  marketplace.py   # API client + synthetic fallback
-  tracker.py       # SQLite snapshot store
-  analyzer.py      # Flip math + confidence scoring
-  cli.py           # Click commands: scan, top, why, track, export
-run_advisor.py     # Entry point
-index.html         # Static dashboard (reads picks.json)
-picks.json         # Latest export, written by `export` command
+  marketplace.py     # The Show API client (rate-limit aware) + synthetic fallback
+  mlb_stats.py       # MLB Stats API client + hot-streak scoring
+  tracker.py         # SQLite snapshot store + rolling-window helpers
+  analyzer.py        # Patient/quick flip math + confidence scoring
+  upgrade_scorer.py  # Gold-to-Diamond bump bets
+  alerts.py          # Price-drop and high-ROI alerts
+  cli.py             # Click commands
+run_advisor.py       # Entry point
+index.html           # Dashboard with Flips / Upgrade Bets / Alerts tabs
+picks.json           # Latest export
 ```
 
 ## Caveats
 
-- The Show's API endpoint name and field names can shift between titles. If
-  the live fetch returns nothing, check `advisor/marketplace.py:_parse_listing`
-  against the current payload shape.
-- "Confidence" is heuristic, not a probability. It ranks; it does not
-  guarantee. A high-confidence pick can still sit unfilled if the order
-  book moves against you.
-- Your fills compete with everyone else running similar tooling. Place
-  orders one stub above/below the standing top of book; if you're not
-  first in line, you don't fill.
+- The Show API rate-limits aggressive paging — `upgrades` takes 30-60s on
+  live data. If you see "synthetic" instead of "live" in the output, the
+  API timed out; try again in a minute.
+- "Confidence" is a heuristic, not a probability. It ranks; it does not
+  guarantee.
+- Roster updates aren't on a fixed cadence — historically every 1-2 weeks.
+  Plan to hold upgrade bets for at least one update cycle.

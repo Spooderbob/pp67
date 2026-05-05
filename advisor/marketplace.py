@@ -23,7 +23,9 @@ import requests
 API_BASE = "https://mlb26.theshow.com/apis/listings.json"
 USER_AGENT = "mlb-show-advisor/0.1 (+personal research)"
 REQUEST_TIMEOUT = 10
-DEFAULT_PAGE_DELAY = 1.0  # be polite to the public API
+DEFAULT_PAGE_DELAY = 2.0   # API rate-limits aggressive paging
+MAX_PAGE_RETRIES = 2
+RETRY_BACKOFF = 3.0
 
 
 @dataclass
@@ -73,14 +75,35 @@ def _rarity_for(ovr: int) -> str:
 
 
 def fetch_page(page: int, item_type: str = "mlb_card",
-               session: requests.Session | None = None) -> list[Listing]:
+               session: requests.Session | None = None,
+               min_ovr: int | None = None,
+               max_ovr: int | None = None,
+               series: str | None = None) -> list[Listing]:
+    """Fetch a single page; retries on 403 / transient JSON errors."""
     sess = session or requests.Session()
     sess.headers.setdefault("User-Agent", USER_AGENT)
-    resp = sess.get(API_BASE, params={"type": item_type, "page": page},
-                    timeout=REQUEST_TIMEOUT)
-    resp.raise_for_status()
-    payload = resp.json()
-    return [_parse_listing(raw) for raw in payload.get("listings", [])]
+    params: dict = {"type": item_type, "page": page}
+    if min_ovr is not None: params["min_ovr"] = min_ovr
+    if max_ovr is not None: params["max_ovr"] = max_ovr
+    if series is not None: params["series"] = series
+
+    last_exc: Exception | None = None
+    for attempt in range(MAX_PAGE_RETRIES + 1):
+        try:
+            resp = sess.get(API_BASE, params=params, timeout=REQUEST_TIMEOUT)
+            if resp.status_code == 403:
+                last_exc = requests.HTTPError(f"403 on page {page}")
+                time.sleep(RETRY_BACKOFF * (attempt + 1))
+                continue
+            resp.raise_for_status()
+            payload = resp.json()
+            return [_parse_listing(raw) for raw in payload.get("listings", [])]
+        except (requests.RequestException, ValueError) as e:
+            last_exc = e
+            time.sleep(RETRY_BACKOFF * (attempt + 1))
+    if last_exc:
+        raise last_exc
+    return []
 
 
 def _parse_listing(raw: dict) -> Listing:
@@ -101,14 +124,30 @@ def _parse_listing(raw: dict) -> Listing:
 
 
 def fetch_all(max_pages: int = 5, item_type: str = "mlb_card",
-              delay: float = DEFAULT_PAGE_DELAY) -> list[Listing]:
+              delay: float = DEFAULT_PAGE_DELAY,
+              min_ovr: int | None = None,
+              max_ovr: int | None = None,
+              series: str | None = None,
+              start_page: int = 1) -> list[Listing]:
+    """Fetch a sequential range of pages. Skips pages that fail rather than
+    aborting — the public API rate-limits, so an isolated 403 is normal."""
     sess = requests.Session()
     out: list[Listing] = []
-    for page in range(1, max_pages + 1):
-        listings = fetch_page(page, item_type=item_type, session=sess)
+    consecutive_empty = 0
+    for page in range(start_page, start_page + max_pages):
+        try:
+            listings = fetch_page(page, item_type=item_type, session=sess,
+                                  min_ovr=min_ovr, max_ovr=max_ovr, series=series)
+        except (requests.RequestException, ValueError):
+            time.sleep(delay)
+            continue
         if not listings:
-            break
-        out.extend(listings)
+            consecutive_empty += 1
+            if consecutive_empty >= 3:
+                break
+        else:
+            consecutive_empty = 0
+            out.extend(listings)
         time.sleep(delay)
     return out
 
@@ -163,20 +202,35 @@ def synthetic_listings(seed: int | None = None, count: int = 80) -> list[Listing
 
 
 def load_listings(max_pages: int = 5, allow_synthetic: bool = True,
-                  synthetic_count: int = 80) -> tuple[list[Listing], str]:
+                  synthetic_count: int = 80,
+                  min_ovr: int | None = None,
+                  max_ovr: int | None = None,
+                  series: str | None = None,
+                  start_page: int = 1) -> tuple[list[Listing], str]:
     """Try the live API; fall back to synthetic data if it fails.
 
     Returns (listings, source) where source is "live" or "synthetic".
     """
     try:
-        live = fetch_all(max_pages=max_pages)
+        live = fetch_all(max_pages=max_pages, min_ovr=min_ovr,
+                         max_ovr=max_ovr, series=series, start_page=start_page)
+        # API ignores min_ovr/max_ovr in practice — filter client-side.
+        if min_ovr is not None:
+            live = [l for l in live if l.ovr >= min_ovr]
+        if max_ovr is not None:
+            live = [l for l in live if l.ovr <= max_ovr]
         if live:
             return live, "live"
     except (requests.RequestException, ValueError):
         pass
     if not allow_synthetic:
         return [], "empty"
-    return synthetic_listings(count=synthetic_count), "synthetic"
+    listings = synthetic_listings(count=synthetic_count)
+    if min_ovr is not None:
+        listings = [l for l in listings if l.ovr >= min_ovr]
+    if max_ovr is not None:
+        listings = [l for l in listings if l.ovr <= max_ovr]
+    return listings, "synthetic"
 
 
 def iter_chunks(seq: Iterable, size: int) -> Iterator[list]:

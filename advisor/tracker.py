@@ -120,6 +120,31 @@ def trend_for(conn: sqlite3.Connection, uuid: str,
     )
 
 
+def rolling_low_buy(conn: sqlite3.Connection, uuid: str,
+                    window_seconds: int = 7 * 24 * 3600) -> int | None:
+    """Lowest best_buy (lowest ask) recorded in the window. Used to set a
+    patient buy target — don't pay above what the card has recently been
+    available at."""
+    cutoff = int(time.time()) - window_seconds
+    row = conn.execute(
+        "SELECT MIN(best_buy) FROM snapshots WHERE uuid = ? AND ts >= ? AND best_buy > 0",
+        (uuid, cutoff),
+    ).fetchone()
+    return row[0] if row and row[0] else None
+
+
+def rolling_high_sell(conn: sqlite3.Connection, uuid: str,
+                      window_seconds: int = 7 * 24 * 3600) -> int | None:
+    """Highest best_sell (highest bid) recorded in the window. Used to set a
+    patient sell target."""
+    cutoff = int(time.time()) - window_seconds
+    row = conn.execute(
+        "SELECT MAX(best_sell) FROM snapshots WHERE uuid = ? AND ts >= ? AND best_sell > 0",
+        (uuid, cutoff),
+    ).fetchone()
+    return row[0] if row and row[0] else None
+
+
 def card_count(conn: sqlite3.Connection) -> int:
     return conn.execute("SELECT COUNT(*) FROM cards").fetchone()[0]
 
