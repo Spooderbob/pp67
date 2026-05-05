@@ -3,141 +3,154 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PrizePicks AI Analyzer</title>
+    <title>MLB The Show 26 Marketplace Advisor</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0a; color: #fff; line-height: 1.6; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 2rem; text-align: center; }
-        .header h1 { font-size: 2.5rem; font-weight: 700; margin-bottom: 0.5rem; }
-        .header p { font-size: 1.1rem; opacity: 0.9; }
-        .stats-bar { display: flex; justify-content: center; gap: 3rem; padding: 1.5rem; background: #1a1a1a; border-bottom: 1px solid #333; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0a0a0f; color: #e9ecf1; line-height: 1.55; }
+        .header { background: linear-gradient(135deg, #003087 0%, #c8102e 100%); padding: 2rem; text-align: center; }
+        .header h1 { font-size: 2.2rem; font-weight: 700; }
+        .header p { font-size: 1rem; opacity: 0.9; margin-top: .25rem; }
+        .stats-bar { display: flex; flex-wrap: wrap; justify-content: center; gap: 2.5rem; padding: 1.25rem; background: #14141c; border-bottom: 1px solid #262634; }
         .stat { text-align: center; }
-        .stat-value { font-size: 2rem; font-weight: 600; color: #667eea; }
-        .stat-label { font-size: 0.9rem; opacity: 0.7; }
-        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
-        .refresh-notice { text-align: center; padding: 1rem; background: #1a1a1a; border-radius: 8px; margin-bottom: 2rem; font-size: 0.9rem; opacity: 0.8; }
-        .picks-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 1.5rem; }
-        .pick-card { background: #1a1a1a; border: 1px solid #333; border-radius: 12px; padding: 1.5rem; transition: all 0.3s; }
-        .pick-card:hover { border-color: #667eea; transform: translateY(-4px); }
-        .player-name { font-size: 1.3rem; font-weight: 600; margin-bottom: 0.25rem; }
-        .stat-type { font-size: 1rem; color: #667eea; margin-bottom: 0.5rem; }
-        .prop-line { font-size: 1.5rem; font-weight: 700; margin: 1rem 0; padding: 0.75rem; background: #0a0a0a; border-radius: 6px; text-align: center; }
-        .analysis-section { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #333; }
-        .recommendation { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
-        .pick-side { font-size: 1.1rem; font-weight: 600; padding: 0.5rem 1rem; border-radius: 6px; }
-        .OVER { background: rgba(0, 255, 0, 0.1); color: #00ff00; }
-        .UNDER { background: rgba(255, 0, 0, 0.1); color: #ff4444; }
-        .confidence { text-align: center; }
-        .confidence-value { font-size: 2rem; font-weight: 700; color: #667eea; }
-        .confidence-bar { width: 100%; height: 8px; background: #333; border-radius: 4px; overflow: hidden; margin-top: 0.5rem; }
-        .confidence-fill { height: 100%; background: linear-gradient(90deg, #ff4444, #667eea, #00ff00); transition: width 0.5s; }
-        .reasoning { font-size: 0.9rem; opacity: 0.8; margin-top: 1rem; font-style: italic; }
-        .loading, .error { text-align: center; padding: 4rem; font-size: 1.2rem; }
-        .error { color: #ff4444; }
-        .last-updated { position: fixed; bottom: 1rem; right: 1rem; padding: 0.5rem 1rem; background: #1a1a1a; border: 1px solid #333; border-radius: 6px; font-size: 0.8rem; opacity: 0.7; }
-        @media (max-width: 768px) { .header h1 { font-size: 2rem; } .stats-bar { flex-direction: column; gap: 1rem; } .picks-grid { grid-template-columns: 1fr; } }
+        .stat-value { font-size: 1.7rem; font-weight: 600; color: #f5b400; }
+        .stat-label { font-size: 0.85rem; opacity: 0.7; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
+        .refresh-notice { text-align: center; padding: .75rem; background: #14141c; border-radius: 8px; margin-bottom: 1.5rem; font-size: 0.85rem; opacity: 0.85; }
+        .picks-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 1.25rem; }
+        .pick-card { background: #14141c; border: 1px solid #262634; border-radius: 12px; padding: 1.25rem; transition: border-color .2s, transform .2s; }
+        .pick-card:hover { border-color: #f5b400; transform: translateY(-3px); }
+        .card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: .5rem; }
+        .player-name { font-size: 1.15rem; font-weight: 600; }
+        .player-meta { font-size: 0.8rem; opacity: 0.7; margin-top: 2px; }
+        .rarity { font-size: 0.7rem; padding: .15rem .5rem; border-radius: 4px; font-weight: 600; letter-spacing: .04em; }
+        .Diamond { background: rgba(110, 231, 255, 0.15); color: #6ee7ff; }
+        .Gold { background: rgba(255, 196, 0, 0.15); color: #ffc400; }
+        .Silver { background: rgba(200, 200, 215, 0.15); color: #c8c8d7; }
+        .Bronze { background: rgba(195, 109, 50, 0.15); color: #c36d32; }
+        .Common { background: rgba(150, 150, 150, 0.15); color: #aaa; }
+        .price-row { display: flex; justify-content: space-between; margin: 1rem 0 .5rem; font-size: 0.9rem; }
+        .price-cell { flex: 1; text-align: center; padding: .5rem; background: #0a0a0f; border-radius: 6px; margin: 0 .25rem; }
+        .price-cell .label { font-size: 0.7rem; opacity: 0.65; text-transform: uppercase; letter-spacing: .04em; }
+        .price-cell .value { font-size: 1.05rem; font-weight: 600; margin-top: .15rem; }
+        .profit { color: #2ecc71; }
+        .roi { color: #f5b400; }
+        .conf-row { display: flex; align-items: center; gap: .75rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #262634; }
+        .conf-label { font-size: 0.75rem; opacity: 0.7; }
+        .conf-bar { flex: 1; height: 8px; background: #262634; border-radius: 4px; overflow: hidden; }
+        .conf-fill { height: 100%; background: linear-gradient(90deg, #c0392b, #f5b400, #2ecc71); }
+        .conf-value { font-weight: 700; min-width: 3.5em; text-align: right; }
+        .reasons { margin-top: .8rem; font-size: 0.82rem; opacity: 0.85; }
+        .reasons li { margin-left: 1rem; margin-top: .25rem; }
+        .loading, .error, .empty { text-align: center; padding: 3rem; font-size: 1rem; opacity: 0.8; }
+        .error { color: #ff6b6b; }
+        @media (max-width: 768px) { .header h1 { font-size: 1.6rem; } .stats-bar { gap: 1rem; } .picks-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>PrizePicks AI Analyzer</h1>
-        <p>Real-time AI-powered sports prop analysis</p>
+        <h1>MLB The Show 26 Marketplace Advisor</h1>
+        <p>Top flip opportunities ranked by net profit and confidence</p>
     </div>
 
     <div class="stats-bar">
         <div class="stat">
-            <div class="stat-value" id="totalPicks">0</div>
-            <div class="stat-label">Today's Picks</div>
+            <div class="stat-value" id="totalPicks">—</div>
+            <div class="stat-label">Qualifying Picks</div>
         </div>
         <div class="stat">
-            <div class="stat-value">78%</div>
+            <div class="stat-value" id="avgConf">—</div>
             <div class="stat-label">Avg Confidence</div>
         </div>
         <div class="stat">
-            <div class="stat-value">5m</div>
-            <div class="stat-label">Update Interval</div>
+            <div class="stat-value" id="topProfit">—</div>
+            <div class="stat-label">Best Net / Flip</div>
         </div>
     </div>
 
     <div class="container">
         <div class="refresh-notice">
-            Data updates every 5 minutes. Last updated: <span id="lastUpdate">Loading...</span>
+            Generated by <code>python run_advisor.py export</code>. Last updated:
+            <span id="lastUpdate">loading…</span>
         </div>
-
         <div id="picksContainer" class="picks-grid">
-            <div class="loading">Loading today's picks...</div>
+            <div class="loading">Loading picks…</div>
         </div>
     </div>
 
-    <div class="last-updated" id="lastUpdatedFixed"></div>
-
     <script>
-        function formatTimestamp(timestamp) {
-            return new Date(timestamp).toLocaleString('en-US', {
-                hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
-            });
+        function fmt(n) { return Number(n).toLocaleString(); }
+        function fmtTime(iso) {
+            try { return new Date(iso).toLocaleString(); } catch { return iso; }
         }
 
-        function loadPicks() {
-            fetch('picks.json')
-                .then(response => response.json())
-                .then(data => {
-                    const container = document.getElementById('picksContainer');
-                    const totalPicksEl = document.getElementById('totalPicks');
-                    const lastUpdateEl = document.getElementById('lastUpdate');
-                    const lastUpdatedFixedEl = document.getElementById('lastUpdatedFixed');
+        function render(data) {
+            const container = document.getElementById("picksContainer");
+            document.getElementById("lastUpdate").textContent = fmtTime(data.timestamp);
+            document.getElementById("totalPicks").textContent = data.totalPicks ?? 0;
 
-                    if (data.status === 'error') {
-                        container.innerHTML = '<div class="error">Error loading picks. Please refresh.</div>';
-                        return;
-                    }
+            if (!data.picks || data.picks.length === 0) {
+                container.innerHTML = '<div class="empty">No qualifying picks. Run <code>python run_advisor.py scan</code> then <code>export</code>.</div>';
+                document.getElementById("avgConf").textContent = "—";
+                document.getElementById("topProfit").textContent = "—";
+                return;
+            }
 
-                    totalPicksEl.textContent = data.totalPicks;
-                    lastUpdateEl.textContent = formatTimestamp(data.timestamp);
-                    lastUpdatedFixedEl.textContent = `Updated: ${formatTimestamp(data.timestamp)}`;
+            const avg = data.picks.reduce((a, p) => a + p.confidence, 0) / data.picks.length;
+            document.getElementById("avgConf").textContent = avg.toFixed(0) + "%";
+            const best = Math.max(...data.picks.map(p => p.profit));
+            document.getElementById("topProfit").textContent = fmt(best);
 
-                    if (data.picks.length === 0) {
-                        container.innerHTML = '<div class="loading">No active picks. Check back closer to game time.</div>';
-                        return;
-                    }
-
-                    container.innerHTML = data.picks.map(pick => `
-                        <div class="pick-card">
-                            <div class="player-name">${pick.player}</div>
-                            <div class="stat-type">${pick.statType}</div>
-                            <div class="prop-line">${pick.propLine}</div>
-                            
-                            <div class="analysis-section">
-                                <div class="recommendation">
-                                    <div>
-                                        <div style="font-size: 0.8rem; opacity: 0.7;">AI Recommends:</div>
-                                        <div class="pick-side ${pick.pick}">${pick.pick}</div>
-                                    </div>
-                                    <div class="confidence">
-                                        <div style="font-size: 0.8rem; opacity: 0.7;">Confidence</div>
-                                        <div class="confidence-value">${pick.confidence}%</div>
-                                        <div class="confidence-bar">
-                                            <div class="confidence-fill" style="width: ${pick.confidence}%"></div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="reasoning">💡 ${pick.reasoning}</div>
-                                <div style="margin-top: 0.5rem; font-size: 0.8rem; opacity: 0.7;">
-                                    Expected Value: +${pick.ev}%
-                                </div>
-                            </div>
+            container.innerHTML = data.picks.map(p => `
+                <div class="pick-card">
+                    <div class="card-header">
+                        <div>
+                            <div class="player-name">${p.card}</div>
+                            <div class="player-meta">${p.team} · ${p.position} · ${p.ovr} OVR · ${p.series}</div>
                         </div>
-                    `).join('');
-                })
-                .catch(error => {
-                    console.error('Error loading picks:', error);
-                    document.getElementById('picksContainer').innerHTML = 
-                        '<div class="error">Failed to load picks. Check console for details.</div>';
+                        <div class="rarity ${p.rarity}">${p.rarity}</div>
+                    </div>
+                    <div class="price-row">
+                        <div class="price-cell">
+                            <div class="label">Buy @</div>
+                            <div class="value">${fmt(p.buyAt)}</div>
+                        </div>
+                        <div class="price-cell">
+                            <div class="label">Sell @</div>
+                            <div class="value">${fmt(p.sellAt)}</div>
+                        </div>
+                        <div class="price-cell">
+                            <div class="label">Net / Flip</div>
+                            <div class="value profit">${fmt(p.profit)}</div>
+                        </div>
+                        <div class="price-cell">
+                            <div class="label">ROI</div>
+                            <div class="value roi">${p.roi.toFixed(1)}%</div>
+                        </div>
+                    </div>
+                    <div class="conf-row">
+                        <span class="conf-label">Confidence</span>
+                        <div class="conf-bar"><div class="conf-fill" style="width:${p.confidence}%"></div></div>
+                        <span class="conf-value">${p.confidence}/100</span>
+                    </div>
+                    <ul class="reasons">
+                        ${p.reasons.map(r => `<li>${r}</li>`).join("")}
+                    </ul>
+                </div>
+            `).join("");
+        }
+
+        function load() {
+            fetch("picks.json", { cache: "no-store" })
+                .then(r => r.json())
+                .then(render)
+                .catch(err => {
+                    document.getElementById("picksContainer").innerHTML =
+                        '<div class="error">Failed to load picks.json — ' + err + '</div>';
                 });
         }
 
-        loadPicks();
-        setInterval(loadPicks, 30000); // Auto-refresh every 30 seconds
+        load();
+        setInterval(load, 30000);
     </script>
 </body>
 </html>

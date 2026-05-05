@@ -1,12 +1,242 @@
 {
-  "timestamp": "2025-12-27T20:11:27.859449+00:00",
-  "totalPicks": 0,
-  "sports": [
-    "NFL",
-    "NBA",
-    "MLB",
-    "NHL"
+  "timestamp": "2026-05-05T19:50:23.872893+00:00",
+  "totalPicks": 80,
+  "picks": [
+    {
+      "card": "Chase Dollander",
+      "team": "COL",
+      "position": "SP",
+      "series": "Spotlight",
+      "ovr": 93,
+      "rarity": "Diamond",
+      "buyAt": 58001,
+      "sellAt": 76499,
+      "profit": 10849,
+      "roi": 18.7,
+      "confidence": 61,
+      "reasons": [
+        "18.7% ROI per flip",
+        "price far above floor \u2014 sharper downside if it dumps",
+        "Diamond card \u2014 high liquidity",
+        "no historical samples yet \u2014 run `scan` repeatedly to build trend data"
+      ],
+      "floorCushion": 82.76
+    },
+    {
+      "card": "Ryan Walker",
+      "team": "SF",
+      "position": "RP",
+      "series": "Breakout",
+      "ovr": 92,
+      "rarity": "Diamond",
+      "buyAt": 26208,
+      "sellAt": 33998,
+      "profit": 4391,
+      "roi": 16.75,
+      "confidence": 62,
+      "reasons": [
+        "16.8% ROI per flip",
+        "Diamond card \u2014 high liquidity",
+        "no historical samples yet \u2014 run `scan` repeatedly to build trend data"
+      ],
+      "floorCushion": 61.84
+    },
+    {
+      "card": "Corbin Carroll",
+      "team": "ARI",
+      "position": "LF",
+      "series": "Awards",
+      "ovr": 90,
+      "rarity": "Diamond",
+      "buyAt": 12702,
+      "sellAt": 16939,
+      "profit": 2544,
+      "roi": 20.03,
+      "confidence": 85,
+      "reasons": [
+        "20.0% ROI per flip",
+        "Diamond card \u2014 high liquidity",
+        "Awards cards trade actively right now",
+        "no historical samples yet \u2014 run `scan` repeatedly to build trend data"
+      ],
+      "floorCushion": 21.27
+    },
+    {
+      "card": "Rafael Devers",
+      "team": "SF",
+      "position": "1B",
+      "series": "Egg Hunt",
+      "ovr": 90,
+      "rarity": "Diamond",
+      "buyAt": 23522,
+      "sellAt": 29864,
+      "profit": 3356,
+      "roi": 14.27,
+      "confidence": 60,
+      "reasons": [
+        "14.3% ROI per flip",
+        "Diamond card \u2014 high liquidity",
+        "no historical samples yet \u2014 run `scan` repeatedly to build trend data"
+      ],
+      "floorCushion": 57.49
+    },
+    {
+      "card": "Clayton Kershaw",
+      "team": "FA",
+      "position": "SP",
+      "series": "World Baseball Classic",
+      "ovr": 90,
+      "rarity": "Diamond",
+      "buyAt": 22361,
+      "sellAt": 28498,
+      "profit": 3288,
+      "roi": 14.7,
+      "confidence": 61,
+      "reasons": [
+        "14.7% ROI per flip",
+        "Diamond card \u2014 high liquidity",
+        "no historical samples yet \u2014 run `scan` repeatedly to build trend data"
+      ],
+      "floorCushion": 55.28
+    },
+    {
+      "card": "Ted Williams",
+      "team": "BOS",
+      "position": "LF",
+      "series": "All-Star",
+      "ovr": 92,
+      "rarity": "Diamond",
+      "buyAt": 25802,
+      "sellAt": 31861,
+      "profit": 2873,
+      "roi": 11.13,
+      "confidence": 65,
+      "reasons": [
+        "11.1% ROI per flip",
+        "Diamond card \u2014 high liquidity",
+        "All-Star cards trade actively right now",
+        "no historical samples yet \u2014 run `scan` repeatedly to build trend data"
+      ],
+      "floorCushion": 61.24
+    },
+    {
+      "card": "Jordan Walker",
+      "team": "STL",
+      "position": "RF",
+      "series": "Spotlight",
+      "ovr": 92,
+      "rarity": "Diamond",
+      "buyAt": 37502,
+      "sellAt": 45198,
+      "profit": 3177,
+      "roi": 8.47,
+      "confidence": 49,
+      "reasons": [
+        "8.5% ROI per flip",
+        "Diamond card \u2014 high liquidity",
+        "no historical samples yet \u2014 run `scan` repeatedly to build trend data"
+      ],
+      "floorCushion": 73.33
+    },
+    {
+      "card": "Mookie Betts",
+      "team": "LAD",
+      "position": "SS",
+      "series": "Egg Hunt",
+      "ovr": 92,
+      "rarity": "Diamond",
+      "buyAt": 56671,
+      "sellAt": 66698,
+      "profit": 3358,
+      "roi": 5.93,
+      "confidence": 44,
+      "reasons": [
+        "5.9% ROI per flip",
+        "price far above floor \u2014 sharper downside if it dumps",
+        "Diamond card \u2014 high liquidity",
+        "no historical samples yet \u2014 run `scan` repeatedly to build trend data"
+      ],
+      "floorCushion": 82.35
+    },
+    {
+      "card": "Jorge Polanco",
+      "team": "NYM",
+      "position": "1B",
+      "series": "New Threads",
+      "ovr": 90,
+      "rarity": "Diamond",
+      "buyAt": 12001,
+      "sellAt": 15484,
+      "profit": 1935,
+      "roi": 16.12,
+      "confidence": 71,
+      "reasons": [
+        "16.1% ROI per flip",
+        "price near quick-sell floor \u2014 limited downside",
+        "Diamond card \u2014 high liquidity",
+        "no historical samples yet \u2014 run `scan` repeatedly to build trend data"
+      ],
+      "floorCushion": 16.67
+    },
+    {
+      "card": "Julio Rodr\u00edguez",
+      "team": "SEA",
+      "position": "CF",
+      "series": "World Baseball Classic",
+      "ovr": 91,
+      "rarity": "Diamond",
+      "buyAt": 51610,
+      "sellAt": 59998,
+      "profit": 2389,
+      "roi": 4.63,
+      "confidence": 43,
+      "reasons": [
+        "4.6% ROI per flip",
+        "price far above floor \u2014 sharper downside if it dumps",
+        "Diamond card \u2014 high liquidity",
+        "no historical samples yet \u2014 run `scan` repeatedly to build trend data"
+      ],
+      "floorCushion": 80.62
+    },
+    {
+      "card": "Kyle Finnegan",
+      "team": "DET",
+      "position": "RP",
+      "series": "St. Patrick's Day",
+      "ovr": 89,
+      "rarity": "Diamond",
+      "buyAt": 7102,
+      "sellAt": 9367,
+      "profit": 1329,
+      "roi": 18.71,
+      "confidence": 72,
+      "reasons": [
+        "18.7% ROI per flip",
+        "Diamond card \u2014 high liquidity",
+        "no historical samples yet \u2014 run `scan` repeatedly to build trend data"
+      ],
+      "floorCushion": 29.6
+    },
+    {
+      "card": "Ildemaro Vargas",
+      "team": "ARI",
+      "position": "1B",
+      "series": "Spotlight",
+      "ovr": 93,
+      "rarity": "Diamond",
+      "buyAt": 64751,
+      "sellAt": 74499,
+      "profit": 2299,
+      "roi": 3.55,
+      "confidence": 40,
+      "reasons": [
+        "3.6% ROI per flip",
+        "price far above floor \u2014 sharper downside if it dumps",
+        "Diamond card \u2014 high liquidity",
+        "no historical samples yet \u2014 run `scan` repeatedly to build trend data"
+      ],
+      "floorCushion": 84.56
+    }
   ],
-  "picks": [],
-  "status": "error"
+  "status": "ok"
 }
