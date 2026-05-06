@@ -89,7 +89,11 @@
 
     <div class="container">
         <div class="meta-row">
-            <div>Last updated: <span id="lastUpdate">loading…</span> · mode: <span id="mode">—</span></div>
+            <div>
+                Last refresh: <span id="lastUpdate">loading…</span>
+                · mode: <span id="mode">—</span>
+                · next auto-refresh: <span id="countdown">—</span>
+            </div>
             <button class="notify-btn" id="notifyBtn">Enable Browser Alerts</button>
         </div>
 
@@ -159,20 +163,20 @@
 
         function renderUpgrades(bets) {
             const root = document.getElementById("tab-upgrades");
-            if (!bets.length) { root.innerHTML = '<div class="empty">No qualifying upgrade bets. Try running <code>upgrades</code> after building a few snapshots.</div>'; return; }
+            if (!bets.length) { root.innerHTML = '<div class="empty">No qualifying upgrade bets yet. After the first auto-refresh completes you should see Bronze/Silver/Gold candidates here.</div>'; return; }
             root.innerHTML = '<div class="grid">' + bets.map(b => `
                 <div class="pick-card">
                     <div class="card-header">
                         <div>
                             <div class="player-name">${b.card}</div>
-                            <div class="player-meta">${b.team} · ${b.position} · ${b.ovr} OVR ${b.rarity} · ${b.series}</div>
+                            <div class="player-meta">${b.team} · ${b.position} · ${b.ovr} OVR · ${b.crossing || (b.rarity + " card")}</div>
                         </div>
                         <div class="rarity ${b.rarity}">${b.rarity}</div>
                     </div>
                     <div class="price-row">
                         <div class="price-cell"><div class="label">Buy ${b.quantity}× @</div><div class="value">${fmt(b.targetBuy)}</div></div>
                         <div class="price-cell"><div class="label">Total Cost</div><div class="value">${fmt(b.costTotal)}</div></div>
-                        <div class="price-cell"><div class="label">Est Diamond$</div><div class="value">${fmt(b.estDiamondPrice)}</div></div>
+                        <div class="price-cell"><div class="label">Est Exit$</div><div class="value">${fmt(b.estExitPrice ?? b.estDiamondPrice ?? 0)}</div></div>
                     </div>
                     <div class="price-row">
                         <div class="price-cell"><div class="label">If Bumped</div><div class="value profit-pos">${signed(b.expectedProfitTotal)}</div></div>
@@ -225,6 +229,30 @@
             localStorage.setItem("knownAlertIds", JSON.stringify([...knownAlertIds]));
         }
 
+        let nextRefreshAt = null;
+
+        function fmtCountdown(targetUnix) {
+            if (!targetUnix) return "—";
+            const remaining = Math.max(0, Math.round(targetUnix - Date.now() / 1000));
+            if (remaining < 60) return remaining + "s";
+            const m = Math.floor(remaining / 60);
+            const s = remaining % 60;
+            if (m < 60) return m + "m " + s.toString().padStart(2, "0") + "s";
+            const h = Math.floor(m / 60);
+            return h + "h " + (m % 60) + "m";
+        }
+
+        function tickCountdown() {
+            const el = document.getElementById("countdown");
+            if (!nextRefreshAt) { el.textContent = "—"; return; }
+            const remaining = nextRefreshAt - Date.now() / 1000;
+            if (remaining <= 0) {
+                el.textContent = "refreshing…";
+            } else {
+                el.textContent = "in " + fmtCountdown(nextRefreshAt);
+            }
+        }
+
         function load() {
             fetch("picks.json", { cache: "no-store" })
                 .then(r => r.json())
@@ -239,6 +267,9 @@
                     const flips = data.flips || [];
                     const best = flips.length ? Math.max(...flips.map(p => p.profit)) : 0;
                     document.getElementById("statBest").textContent = best ? fmt(best) : "—";
+
+                    nextRefreshAt = data.nextRefreshAt || null;
+                    tickCountdown();
 
                     renderFlips(flips);
                     renderUpgrades(data.upgrades || []);
@@ -255,6 +286,7 @@
         setupNotifications();
         load();
         setInterval(load, 30000);
+        setInterval(tickCountdown, 1000);
     </script>
 </body>
 </html>

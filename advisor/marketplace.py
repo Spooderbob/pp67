@@ -177,17 +177,23 @@ _SERIES_POOL = [
 
 
 def synthetic_listings(seed: int | None = None, count: int = 80) -> list[Listing]:
-    """Deterministic synthetic catalog for offline development."""
+    """Deterministic synthetic catalog for offline development.
+
+    Biased so ~50% of cards are Live Series spanning the full OVR range,
+    which gives the upgrade scorer enough realistic candidates to surface.
+    """
     rng = random.Random(seed if seed is not None else int(time.time()) // 3600)
     listings: list[Listing] = []
     for i in range(count):
         name, team, pos = _SYNTH_NAMES[i % len(_SYNTH_NAMES)]
-        series = _SERIES_POOL[i % len(_SERIES_POOL)]
-        ovr = rng.choice([72, 78, 82, 85, 87, 89, 91, 93, 95, 97, 99])
+        # Half the cards are Live Series; the rest cycle through programs.
+        if i % 2 == 0:
+            series = "Live Series"
+        else:
+            series = _SERIES_POOL[1 + ((i // 2) % (len(_SERIES_POOL) - 1))]
+        ovr = rng.choice([72, 78, 82, 84, 85, 87, 89, 91, 93, 95, 97, 99])
         qs = _quick_sell_for(ovr)
-        # Ask sits modestly above QS for high-OVR; spread tightens with liquidity.
         ask = max(qs + 1, int(qs * rng.uniform(1.05, 3.0)))
-        # Bid sits below ask; sometimes a wide spread = flip opportunity.
         spread_frac = rng.uniform(0.02, 0.35)
         bid = max(qs, int(ask * (1 - spread_frac)))
         uid_src = f"{name}|{series}|{ovr}|{i}"

@@ -2,10 +2,12 @@
 
 Subcommands:
 
+* ``serve``    — start the dashboard webserver and auto-refresh data on
+                 an interval (default hourly). Single command for end users.
 * ``scan``     — fetch the marketplace, store a snapshot, run alert detection,
                  print top patient-mode flip picks.
 * ``top``      — show top picks from the most recent snapshot only.
-* ``upgrades`` — score Gold cards for Diamond-bump upgrade investing
+* ``upgrades`` — score Bronze/Silver/Gold cards for tier-bump upgrade investing
                  (uses real-life MLB stats from the MLB Stats API).
 * ``alerts``   — list active price-drop / high-ROI alerts.
 * ``why``      — explain a single card's score in detail.
@@ -15,7 +17,12 @@ Subcommands:
 
 from __future__ import annotations
 
+import http.server
 import json
+import logging
+import os
+import socketserver
+import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -24,7 +31,7 @@ import click
 from tabulate import tabulate
 
 from . import marketplace, analyzer, tracker, alerts as alerts_mod
-from . import upgrade_scorer, mlb_stats
+from . import upgrade_scorer, mlb_stats, jobs
 
 
 @click.group()
@@ -62,15 +69,16 @@ def _render_upgrades(bets: list[upgrade_scorer.UpgradeBet], limit: int) -> str:
         rows.append([
             b.confidence, b.upgrade_score, f"{b.listing.name}",
             f"{b.listing.ovr} {b.listing.rarity[:1]}",
+            b.crossing,
             f"{b.target_buy:,}", b.quantity, f"{b.cost_total:,}",
-            f"{b.expected_diamond_price:,}",
+            f"{b.expected_exit_price:,}",
             f"{b.expected_profit_total:+,}",
             f"{b.downside_total:+,}",
         ])
     return tabulate(
         rows,
-        headers=["Conf", "Bump%", "Card", "OVR", "Tgt Buy", "Qty",
-                 "Cost", "Est Diamond$", "Upside", "Downside"],
+        headers=["Conf", "Bump%", "Card", "OVR", "Crossing", "Tgt Buy",
+                 "Qty", "Cost", "Exit$", "Upside", "Downside"],
         tablefmt="github",
     )
 
@@ -148,8 +156,8 @@ def top(ctx, limit, min_profit, min_confidence, mode) -> None:
 @click.option("--min-profit-per-card", default=100, show_default=True)
 @click.option("--season", default=None, type=int,
               help="MLB season for stats lookup (default: current year).")
-@click.option("--pages", default=10, show_default=True,
-              help="Pages of Gold-tier listings to fetch.")
+@click.option("--pages", default=20, show_default=True,
+              help="Pages of upgrade-tier listings (Bronze/Silver/Gold).")
 @click.option("--no-synthetic", is_flag=True)
 @click.pass_context
 def upgrades(ctx, quantity, limit, min_confidence,
@@ -157,12 +165,12 @@ def upgrades(ctx, quantity, limit, min_confidence,
     """Find Gold cards likely to bump to Diamond on the next roster update."""
     conn = tracker.connect(ctx.obj["db_path"])
 
-    # The public API sorts by OVR descending; Gold tier (80-84) starts ~page 11.
-    click.echo("Fetching Gold-tier listings (OVR 80-84) — this takes ~30s "
-               "due to API rate limits …")
+    # API sorts OVR-descending; Bronze through Gold spans pages ~11-30.
+    click.echo("Fetching upgrade-tier listings (OVR 65-84) — this takes "
+               "~45s due to API rate limits …")
     listings, source = marketplace.load_listings(
         max_pages=pages, allow_synthetic=not no_synthetic,
-        min_ovr=80, max_ovr=84, start_page=11,
+        min_ovr=65, max_ovr=84, start_page=11,
     )
     if not listings:
         raise click.ClickException("No Gold-tier listings retrieved.")
@@ -283,50 +291,95 @@ def track(ctx, interval, rounds, pages, no_synthetic) -> None:
 
 
 @cli.command()
-@click.option("--limit", default=24, show_default=True)
-@click.option("--upgrade-limit", default=15, show_default=True)
+@click.option("--limit", default=30, show_default=True)
+@click.option("--upgrade-limit", default=30, show_default=True)
 @click.option("--min-profit", default=50, show_default=True)
 @click.option("--min-confidence", default=40, show_default=True)
 @click.option("--quantity", default=20, show_default=True)
 @click.option("--mode", type=click.Choice(["patient", "quick"]), default="patient")
 @click.option("--out", default="picks.json", show_default=True)
 @click.option("--no-stats", is_flag=True,
-              help="Skip MLB Stats API call (upgrades scored without form data).")
+              help="Skip MLB Stats API call.")
 @click.pass_context
 def export(ctx, limit, upgrade_limit, min_profit, min_confidence, quantity,
            mode, out, no_stats) -> None:
     """Write picks.json for the dashboard (flips + upgrades + alerts)."""
-    conn = tracker.connect(ctx.obj["db_path"])
-    listings = _latest_listings(conn)
-    if not listings:
+    if not _latest_listings_exist(ctx.obj["db_path"]):
         raise click.ClickException("No snapshots in DB. Run `scan` first.")
-
-    opps = analyzer.rank(listings, conn=conn, min_profit=min_profit,
-                         min_confidence=min_confidence, mode=mode)
-
-    player_index = {} if no_stats else mlb_stats.build_player_index()
-    bets = upgrade_scorer.rank_upgrades(
-        listings, player_index, quantity=quantity, min_confidence=35,
-        min_profit_per_card=100,
+    payload = jobs.run_export(
+        ctx.obj["db_path"], out_path=out, mode=mode, quantity=quantity,
+        min_profit=min_profit, min_confidence=min_confidence,
+        flip_limit=limit, upgrade_limit=upgrade_limit,
+        player_index={} if no_stats else None,
     )
+    click.echo(f"Wrote {len(payload['flips'])} flips, "
+               f"{len(payload['upgrades'])} upgrade bets, "
+               f"{len(payload['alerts'])} alerts → {out}")
 
-    active_alerts = alerts_mod.list_active(conn, limit=50)
 
-    payload = {
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "mode": mode,
-        "stats_source": "mlb_stats_api" if player_index else "unavailable",
-        "totalFlips": len(opps),
-        "totalUpgrades": len(bets),
-        "totalAlerts": len(active_alerts),
-        "flips": [_serialize_flip(o) for o in opps[:limit]],
-        "upgrades": [_serialize_upgrade(b) for b in bets[:upgrade_limit]],
-        "alerts": [_serialize_alert(a) for a in active_alerts],
-        "status": "ok" if (opps or bets or active_alerts) else "empty",
-    }
-    Path(out).write_text(json.dumps(payload, indent=2))
-    click.echo(f"Wrote {len(opps[:limit])} flips, {len(bets[:upgrade_limit])} "
-               f"upgrade bets, {len(active_alerts)} alerts → {out}")
+@cli.command()
+@click.option("--port", default=8000, show_default=True)
+@click.option("--host", default="127.0.0.1", show_default=True)
+@click.option("--interval", default=3600, show_default=True,
+              help="Seconds between full data refreshes (default 1h).")
+@click.option("--upgrade-pages", default=14, show_default=True,
+              help="Pages of upgrade-tier listings (Bronze/Silver/Gold).")
+@click.option("--no-synthetic", is_flag=True)
+@click.pass_context
+def serve(ctx, port, host, interval, upgrade_pages, no_synthetic) -> None:
+    """Start the dashboard webserver and auto-refresh data every interval.
+
+    One command for end users: refreshes prices and stats hourly in a
+    background thread while serving the dashboard. Press Ctrl+C to stop.
+    """
+    logging.basicConfig(level=logging.INFO,
+                        format="[%(asctime)s] %(message)s",
+                        datefmt="%H:%M:%S")
+    db_path = ctx.obj["db_path"]
+    serve_dir = Path.cwd()
+    stop_event = threading.Event()
+
+    def refresh_loop() -> None:
+        while not stop_event.is_set():
+            next_at = time.time() + interval
+            try:
+                jobs.full_refresh(
+                    db_path,
+                    upgrade_pages=upgrade_pages,
+                    next_refresh_at=next_at,
+                    allow_synthetic=not no_synthetic,
+                )
+            except Exception as e:
+                logging.error("refresh failed: %s", e)
+            # Sleep in small chunks so Ctrl+C is responsive.
+            remaining = interval
+            while remaining > 0 and not stop_event.is_set():
+                time.sleep(min(2, remaining))
+                remaining -= 2
+
+    refresher = threading.Thread(target=refresh_loop, daemon=True)
+    refresher.start()
+
+    handler = http.server.SimpleHTTPRequestHandler
+
+    class ReusableServer(socketserver.ThreadingTCPServer):
+        allow_reuse_address = True
+        daemon_threads = True
+
+    os.chdir(serve_dir)
+    with ReusableServer((host, port), handler) as httpd:
+        url = f"http://{host}:{port}/"
+        click.echo(f"\n  Dashboard:   {url}")
+        click.echo(f"  Auto-refresh: every {interval//60} min")
+        click.echo(f"  Database:    {db_path}")
+        click.echo(f"  Press Ctrl+C to stop.\n")
+        try:
+            httpd.serve_forever()
+        except KeyboardInterrupt:
+            click.echo("\nstopping…")
+        finally:
+            stop_event.set()
+            httpd.shutdown()
 
 
 # ---- helpers ---------------------------------------------------------------
@@ -348,41 +401,9 @@ def _latest_listings(conn) -> list[marketplace.Listing]:
     ) for r in rows]
 
 
-def _serialize_flip(o: analyzer.Opportunity) -> dict:
-    return {
-        "card": o.listing.name, "team": o.listing.team,
-        "position": o.listing.position, "series": o.listing.series,
-        "ovr": o.listing.ovr, "rarity": o.listing.rarity,
-        "buyAt": o.buy_at, "sellAt": o.sell_at,
-        "profit": o.profit_per_card, "roi": round(o.roi_pct, 2),
-        "confidence": o.confidence, "reasons": o.reasons,
-        "floorCushion": round(o.floor_cushion_pct, 2),
-        "mode": o.mode,
-    }
-
-
-def _serialize_upgrade(b: upgrade_scorer.UpgradeBet) -> dict:
-    return {
-        "card": b.listing.name, "team": b.listing.team,
-        "position": b.listing.position, "series": b.listing.series,
-        "ovr": b.listing.ovr, "rarity": b.listing.rarity,
-        "targetBuy": b.target_buy, "quantity": b.quantity,
-        "costTotal": b.cost_total,
-        "estDiamondPrice": b.expected_diamond_price,
-        "expectedProfitTotal": b.expected_profit_total,
-        "downsideTotal": b.downside_total,
-        "upgradeScore": b.upgrade_score,
-        "confidence": b.confidence,
-        "reasons": b.reasons,
-    }
-
-
-def _serialize_alert(a) -> dict:
-    return {
-        "id": a.id, "uuid": a.uuid, "kind": a.kind, "severity": a.severity,
-        "message": a.message, "detail": a.detail, "card": a.card_name,
-        "triggeredAt": a.triggered_at,
-    }
+def _latest_listings_exist(db_path: str) -> bool:
+    conn = tracker.connect(db_path)
+    return tracker.snapshot_count(conn) > 0
 
 
 def main() -> None:

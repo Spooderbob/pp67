@@ -35,38 +35,39 @@ data so you can still develop and demo against it.
 pip install -r requirements.txt
 ```
 
-## Usage
+## Run it (one command)
 
 ```bash
-# Patient-mode flips on the top of the market (Diamonds)
+python run_advisor.py serve
+```
+
+That starts the dashboard at http://localhost:8000 **and** kicks off a
+background thread that refreshes prices, real-life MLB stats, upgrade
+bets, and alerts every hour. Leave the terminal window open; the website
+updates itself. Press `Ctrl+C` to stop.
+
+Click "Enable Browser Alerts" once on the dashboard for push notifications
+when new alerts land. The countdown in the header shows time until the
+next auto-refresh.
+
+## Manual commands (optional)
+
+```bash
+# One-off scan (top of market)
 python run_advisor.py scan
 
-# Gold tier upgrade bets — fetches from page 11 where Golds start
+# One-off upgrade-bet evaluation across Bronze/Silver/Gold
 python run_advisor.py upgrades --quantity 20
 
-# Active price-drop / high-ROI alerts
+# Active alerts
 python run_advisor.py alerts
 
 # Drill into one card
 python run_advisor.py why "Judge"
 
-# Build price history (snapshot every 15 min). Better trends = better picks.
-python run_advisor.py track --interval 900
-
-# Write picks.json for the dashboard
+# Write picks.json without serving
 python run_advisor.py export
 ```
-
-## Running the website
-
-```bash
-python run_advisor.py scan
-python run_advisor.py upgrades   # populate gold-tier snapshots
-python run_advisor.py export
-python -m http.server 8000
-```
-Then open http://localhost:8000. Click "Enable Browser Alerts" once for
-push notifications when new alerts land.
 
 ## How the scoring works
 
