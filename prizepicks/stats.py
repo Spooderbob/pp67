@@ -190,7 +190,8 @@ def game_log(conn: sqlite3.Connection, player_id: int,
                     timeout=TIMEOUT)
     if not resp.ok:
         return []
-    splits = resp.json().get("stats", [{}])[0].get("splits", [])
+    stats_groups = resp.json().get("stats", [])
+    splits = stats_groups[0].get("splits", []) if stats_groups else []
 
     with conn:
         conn.execute(
