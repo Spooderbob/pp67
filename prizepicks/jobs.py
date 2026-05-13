@@ -19,8 +19,13 @@ def run_refresh(db_path: str = str(stats.DEFAULT_DB),
                 out_path: str = "pp_picks.json",
                 min_confidence: int = 35,
                 top_limit: int = 60,
+                over_only: bool = True,
                 next_refresh_at: float | None = None) -> dict:
     """One full cycle: projections + stats + scoring + export.
+
+    With ``over_only=True`` (the default) we filter to "More" picks since
+    that's all most states' PrizePicks accounts can place under the
+    current Pick'em rules.
 
     Returns the payload it wrote so the caller can also print a summary.
     """
@@ -68,6 +73,8 @@ def run_refresh(db_path: str = str(stats.DEFAULT_DB),
         score = scorer.score_prop(proj.line, mapping, games)
         if not score:
             continue
+        if over_only and score.pick != "OVER":
+            continue
         if score.confidence < min_confidence:
             continue
         picks.append(_serialize(proj, player, score))
@@ -81,6 +88,7 @@ def run_refresh(db_path: str = str(stats.DEFAULT_DB),
         "league": league,
         "totalProjections": len(projections),
         "totalPicks": len(picks),
+        "overOnly": over_only,
         "unmatchedSample": unmatched[:10],
         "lastRefreshAt": time.time(),
         "nextRefreshAt": next_refresh_at,

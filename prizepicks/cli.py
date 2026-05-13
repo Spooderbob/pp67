@@ -52,12 +52,17 @@ def _render(picks: list[dict], limit: int) -> str:
 @click.option("--limit", default=20, show_default=True)
 @click.option("--min-confidence", default=35, show_default=True)
 @click.option("--out", default="pp_picks.json", show_default=True)
+@click.option("--include-under", is_flag=True,
+              help="Include UNDER picks (only useful in states where "
+                   "PrizePicks still offers UNDER side; many are Pick'em "
+                   "More-only).")
 @click.pass_context
-def scan(ctx, league, limit, min_confidence, out) -> None:
+def scan(ctx, league, limit, min_confidence, out, include_under) -> None:
     """Fetch projections, pull stats, score picks, write pp_picks.json."""
     payload = jobs.run_refresh(
         db_path=ctx.obj["db_path"], league=league,
         out_path=out, min_confidence=min_confidence,
+        over_only=not include_under,
     )
     if payload.get("error"):
         raise click.ClickException(payload["error"])
@@ -128,8 +133,10 @@ def why(query, out) -> None:
               help="Seconds between refreshes (default 1h).")
 @click.option("--league", default="MLB", show_default=True)
 @click.option("--min-confidence", default=35, show_default=True)
+@click.option("--include-under", is_flag=True,
+              help="Include UNDER picks (Pick'em states default to More-only).")
 @click.pass_context
-def serve(ctx, port, host, interval, league, min_confidence) -> None:
+def serve(ctx, port, host, interval, league, min_confidence, include_under) -> None:
     """Start the PrizePicks dashboard and auto-refresh hourly.
 
     The dashboard is served from the current directory (so it can read
@@ -147,6 +154,7 @@ def serve(ctx, port, host, interval, league, min_confidence) -> None:
             try:
                 jobs.run_refresh(db_path=db_path, league=league,
                                  min_confidence=min_confidence,
+                                 over_only=not include_under,
                                  next_refresh_at=next_at)
             except Exception as e:
                 logging.error("refresh failed: %s", e)

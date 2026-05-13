@@ -29,6 +29,8 @@
         .pick-side { padding: .25rem .6rem; border-radius: 6px; font-size: 0.8rem; font-weight: 700; letter-spacing: .04em; }
         .OVER { background: rgba(46, 204, 113, 0.15); color: #2ecc71; }
         .UNDER { background: rgba(231, 76, 60, 0.15); color: #ff6b6b; }
+        .More { background: rgba(46, 204, 113, 0.15); color: #2ecc71; }
+        .Less { background: rgba(231, 76, 60, 0.15); color: #ff6b6b; }
         .prop-line { background: #06070d; border-radius: 6px; padding: .7rem; margin: .55rem 0; text-align: center; font-size: 1.1rem; font-weight: 600; }
         .prop-line .stat-name { font-size: 0.8rem; opacity: 0.65; font-weight: 400; display: block; margin-bottom: .15rem; text-transform: uppercase; letter-spacing: .04em; }
 
@@ -137,11 +139,11 @@
                             <div class="player">${p.player}</div>
                             <div class="meta">${p.team || ""} ${p.position ? "· " + p.position : ""} ${p.matchup ? "· " + p.matchup : ""}</div>
                         </div>
-                        <div class="pick-side ${p.pick}">${p.pick}</div>
+                        <div class="pick-side ${p.pick}">${p.pick === "OVER" ? "MORE" : p.pick === "UNDER" ? "LESS" : p.pick}</div>
                     </div>
                     <div class="prop-line">
                         <span class="stat-name">${p.statType}</span>
-                        ${p.pick} ${p.line}
+                        ${p.pick === "OVER" ? "MORE THAN" : p.pick === "UNDER" ? "LESS THAN" : p.pick} ${p.line}
                     </div>
                     <div class="rates">
                         <div class="rate ${c10}"><div class="label">L10 over rate</div><div class="value">${(p.hitRate10*100).toFixed(0)}%</div></div>
