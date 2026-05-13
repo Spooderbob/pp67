@@ -1,3 +1,78 @@
+# pp67 — MLB sports analytics tools
+
+Two separate tools in one repo:
+
+1. **MLB The Show 26 Marketplace Advisor** — flip + upgrade-bet recommender
+   for The Show's community marketplace. Run with `python run_advisor.py serve`.
+2. **PrizePicks Player-Prop Analyzer** — scores live PrizePicks MLB props
+   against real player game logs. Run with `python run_pp.py serve`.
+
+---
+
+# PrizePicks Player-Prop Analyzer
+
+Pulls live PrizePicks projections, scores each prop against the player's
+last 10 / 20 game logs from the MLB Stats API, and ranks by confidence.
+
+**Predictive analytics only — does not guarantee winning picks.** Sports
+betting carries real financial risk. Bet responsibly; underage and
+self-excluded users should not use this tool.
+
+## How it scores
+
+For each prop (e.g. "Aaron Judge OVER 1.5 hits"):
+
+1. Look up the player in our active-roster cache.
+2. Pull their per-game log for the relevant stat group.
+3. Compute the actual value of the stat per game (handles composites:
+   Hits+Runs+RBIs, Pitching Outs = innings × 3, etc.).
+4. Count how often the **last 10**, **last 20**, and **season** games
+   cleared the line.
+5. Apply a trend signal (last-5 vs last-15 averages).
+6. Output OVER or UNDER with a confidence score (0–100) and reasoning.
+
+## Run it (one command)
+
+```bash
+python run_pp.py serve
+```
+
+Open http://localhost:8001/prizepicks.html. Auto-refreshes every hour.
+
+### If PrizePicks blocks you
+
+PrizePicks uses PerimeterX bot protection. From most home internet IPs it
+serves the projections endpoint normally; from data-center / cloud IPs
+(and some VPNs) it returns a 403. If you see a "PrizePicks blocked"
+banner on the dashboard:
+
+- Disable any VPN
+- Open https://app.prizepicks.com/ in your browser once, then retry
+
+## Manual commands
+
+```bash
+python run_pp.py scan                    # one-shot fetch + score
+python run_pp.py top --limit 10          # show latest picks (no fetch)
+python run_pp.py why "Judge"             # explain a specific player's pick
+```
+
+## Files
+
+```
+prizepicks/
+  api.py        # PrizePicks projections endpoint client
+  stats.py      # MLB Stats API roster + game-log fetcher (SQLite cache)
+  scorer.py     # PropScore hit-rate / trend / confidence logic
+  jobs.py       # refresh pipeline
+  cli.py        # scan / top / why / serve
+run_pp.py       # entry point
+prizepicks.html # dashboard
+pp_picks.json   # latest export (written by scan/serve)
+```
+
+---
+
 # MLB The Show 26 Marketplace Advisor
 
 A personal-use tool for the MLB The Show 26 community marketplace. Three

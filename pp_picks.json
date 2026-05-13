@@ -1,0 +1,11 @@
+{
+  "timestamp": "2026-05-13T15:26:58.644674+00:00",
+  "league": "MLB",
+  "totalProjections": 0,
+  "totalPicks": 0,
+  "lastRefreshAt": 1778686018.6446977,
+  "nextRefreshAt": null,
+  "status": "blocked",
+  "error": "PrizePicks perimeter block (PerimeterX) \u2014 this endpoint rejects requests from data-center / cloud IPs. Run the tool from your home network.",
+  "picks": []
+}

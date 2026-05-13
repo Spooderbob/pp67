@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PrizePicks Player-Prop Analyzer</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #06070d; color: #e9ecf1; line-height: 1.5; }
+        .header { background: linear-gradient(135deg, #6e2bff 0%, #00d1b2 100%); padding: 1.6rem; text-align: center; }
+        .header h1 { font-size: 1.9rem; font-weight: 700; }
+        .header p { font-size: 0.92rem; opacity: 0.95; margin-top: .25rem; }
+        .disclaimer { background: #2a1a00; color: #f5b400; padding: .65rem 1rem; font-size: 0.82rem; text-align: center; border-bottom: 1px solid #5a3a00; }
+        .stats-bar { display: flex; flex-wrap: wrap; justify-content: center; gap: 2rem; padding: 1rem; background: #11131c; border-bottom: 1px solid #262839; }
+        .stat { text-align: center; min-width: 120px; }
+        .stat-value { font-size: 1.5rem; font-weight: 600; color: #00d1b2; }
+        .stat-label { font-size: 0.75rem; opacity: 0.7; text-transform: uppercase; letter-spacing: .05em; }
+        .container { max-width: 1500px; margin: 0 auto; padding: 1rem 1.25rem 2rem; }
+        .meta-row { display: flex; justify-content: space-between; align-items: center; padding: .65rem 1rem; background: #11131c; border-radius: 8px; margin-bottom: 1rem; font-size: 0.83rem; flex-wrap: wrap; gap: .5rem; }
+        .blocked { background: rgba(255, 107, 107, 0.1); border: 1px solid rgba(255, 107, 107, 0.4); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; }
+        .blocked .title { color: #ff6b6b; font-weight: 600; margin-bottom: .35rem; }
+
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 1rem; }
+        .pick-card { background: #11131c; border: 1px solid #262839; border-radius: 12px; padding: 1.05rem 1.15rem; transition: border-color .2s, transform .15s; }
+        .pick-card:hover { border-color: #00d1b2; transform: translateY(-2px); }
+        .pick-header { display: flex; justify-content: space-between; align-items: flex-start; gap: .5rem; margin-bottom: .5rem; }
+        .player { font-size: 1.05rem; font-weight: 600; }
+        .meta { font-size: 0.74rem; opacity: 0.7; margin-top: 2px; }
+        .pick-side { padding: .25rem .6rem; border-radius: 6px; font-size: 0.8rem; font-weight: 700; letter-spacing: .04em; }
+        .OVER { background: rgba(46, 204, 113, 0.15); color: #2ecc71; }
+        .UNDER { background: rgba(231, 76, 60, 0.15); color: #ff6b6b; }
+        .prop-line { background: #06070d; border-radius: 6px; padding: .7rem; margin: .55rem 0; text-align: center; font-size: 1.1rem; font-weight: 600; }
+        .prop-line .stat-name { font-size: 0.8rem; opacity: 0.65; font-weight: 400; display: block; margin-bottom: .15rem; text-transform: uppercase; letter-spacing: .04em; }
+
+        .rates { display: grid; grid-template-columns: repeat(3, 1fr); gap: .35rem; margin: .55rem 0; }
+        .rate { background: #06070d; padding: .45rem .35rem; border-radius: 6px; text-align: center; }
+        .rate .label { font-size: 0.66rem; opacity: 0.65; text-transform: uppercase; letter-spacing: .04em; }
+        .rate .value { font-size: 1rem; font-weight: 600; margin-top: .15rem; }
+        .rate.high   .value { color: #2ecc71; }
+        .rate.mid    .value { color: #f5b400; }
+        .rate.low    .value { color: #ff6b6b; }
+
+        .conf-row { display: flex; align-items: center; gap: .6rem; margin: .85rem 0 .35rem; padding-top: .75rem; border-top: 1px solid #262839; }
+        .conf-bar { flex: 1; height: 7px; background: #262839; border-radius: 4px; overflow: hidden; }
+        .conf-fill { height: 100%; background: linear-gradient(90deg, #c0392b, #f5b400, #2ecc71); }
+        .conf-label { font-size: 0.72rem; opacity: 0.7; }
+        .conf-value { font-weight: 700; font-size: 0.95rem; min-width: 3.5em; text-align: right; }
+
+        .trend { font-size: 0.78rem; opacity: 0.85; }
+        .trend.rising { color: #2ecc71; }
+        .trend.falling { color: #ff6b6b; }
+        .trend.flat { color: #aab; }
+
+        .reasons { margin-top: .55rem; font-size: 0.78rem; opacity: 0.88; }
+        .reasons li { margin-left: 1rem; margin-top: .2rem; }
+
+        .empty, .loading, .error { text-align: center; padding: 3rem; opacity: 0.85; }
+        @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } .header h1 { font-size: 1.45rem; } }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>PrizePicks Player-Prop Analyzer</h1>
+        <p>Live projections from PrizePicks · scored against MLB game logs</p>
+    </div>
+    <div class="disclaimer">
+        Predictive analytics only. Does <strong>not</strong> guarantee winning picks.
+        Sports betting carries real financial risk — bet responsibly.
+        Underage and self-excluded users should not use this tool.
+    </div>
+
+    <div class="stats-bar">
+        <div class="stat"><div class="stat-value" id="statProjections">—</div><div class="stat-label">Live Projections</div></div>
+        <div class="stat"><div class="stat-value" id="statPicks">—</div><div class="stat-label">Qualifying Picks</div></div>
+        <div class="stat"><div class="stat-value" id="statAvgConf">—</div><div class="stat-label">Avg Confidence</div></div>
+        <div class="stat"><div class="stat-value" id="statTop">—</div><div class="stat-label">Top Conf</div></div>
+    </div>
+
+    <div class="container">
+        <div class="meta-row">
+            <div>
+                Last refresh: <span id="lastUpdate">loading…</span> ·
+                next auto-refresh: <span id="countdown">—</span> ·
+                league: <span id="league">MLB</span>
+            </div>
+            <div style="font-size: 0.8rem; opacity: 0.7;">Auto-reloads every 30s</div>
+        </div>
+
+        <div id="blockedBanner"></div>
+        <div id="picks"></div>
+    </div>
+
+    <script>
+        let nextRefreshAt = null;
+
+        function fmt(n) { return Number(n).toLocaleString(); }
+        function fmtTime(iso) { try { return new Date(iso).toLocaleString(); } catch { return iso; } }
+
+        function fmtCountdown(targetUnix) {
+            if (!targetUnix) return "—";
+            const remaining = Math.max(0, Math.round(targetUnix - Date.now() / 1000));
+            if (remaining < 60) return remaining + "s";
+            const m = Math.floor(remaining / 60);
+            const s = remaining % 60;
+            if (m < 60) return m + "m " + s.toString().padStart(2, "0") + "s";
+            const h = Math.floor(m / 60);
+            return h + "h " + (m % 60) + "m";
+        }
+
+        function tickCountdown() {
+            const el = document.getElementById("countdown");
+            if (!nextRefreshAt) { el.textContent = "—"; return; }
+            const remaining = nextRefreshAt - Date.now() / 1000;
+            el.textContent = remaining <= 0 ? "refreshing…" : "in " + fmtCountdown(nextRefreshAt);
+        }
+
+        function rateClass(rate) {
+            if (rate >= 0.65) return "high";
+            if (rate >= 0.5) return "mid";
+            return "low";
+        }
+
+        function renderPicks(picks) {
+            const root = document.getElementById("picks");
+            if (!picks.length) {
+                root.innerHTML = '<div class="empty">No qualifying picks yet. After the next auto-refresh you should see ranked picks here.</div>';
+                return;
+            }
+            root.innerHTML = '<div class="grid">' + picks.map(p => {
+                const c10 = rateClass(p.pick === "OVER" ? p.hitRate10 : 1 - p.hitRate10);
+                const c20 = rateClass(p.pick === "OVER" ? p.hitRate20 : 1 - p.hitRate20);
+                const cs  = rateClass(p.pick === "OVER" ? p.hitRateSeason : 1 - p.hitRateSeason);
+                return `
+                <div class="pick-card">
+                    <div class="pick-header">
+                        <div>
+                            <div class="player">${p.player}</div>
+                            <div class="meta">${p.team || ""} ${p.position ? "· " + p.position : ""} ${p.matchup ? "· " + p.matchup : ""}</div>
+                        </div>
+                        <div class="pick-side ${p.pick}">${p.pick}</div>
+                    </div>
+                    <div class="prop-line">
+                        <span class="stat-name">${p.statType}</span>
+                        ${p.pick} ${p.line}
+                    </div>
+                    <div class="rates">
+                        <div class="rate ${c10}"><div class="label">L10 over rate</div><div class="value">${(p.hitRate10*100).toFixed(0)}%</div></div>
+                        <div class="rate ${c20}"><div class="label">L20</div><div class="value">${(p.hitRate20*100).toFixed(0)}%</div></div>
+                        <div class="rate ${cs}"><div class="label">Season</div><div class="value">${(p.hitRateSeason*100).toFixed(0)}%</div></div>
+                    </div>
+                    <div style="font-size: 0.82rem; opacity: 0.85;">
+                        Last-5 avg <strong>${p.last5Avg.toFixed(2)}</strong> vs line ${p.line}
+                        · <span class="trend ${p.trend}">${p.trend}</span>
+                        · ${p.gamesPlayed} games on record
+                    </div>
+                    <div class="conf-row">
+                        <span class="conf-label">Confidence</span>
+                        <div class="conf-bar"><div class="conf-fill" style="width:${p.confidence}%"></div></div>
+                        <span class="conf-value">${p.confidence}/100</span>
+                    </div>
+                    <ul class="reasons">${p.reasons.map(r => `<li>${r}</li>`).join("")}</ul>
+                </div>`;
+            }).join("") + "</div>";
+        }
+
+        function renderBlocked(error) {
+            const b = document.getElementById("blockedBanner");
+            if (!error) { b.innerHTML = ""; return; }
+            b.innerHTML = `<div class="blocked"><div class="title">PrizePicks API blocked</div>${error}</div>`;
+        }
+
+        function load() {
+            fetch("pp_picks.json", { cache: "no-store" })
+                .then(r => r.json())
+                .then(data => {
+                    document.getElementById("lastUpdate").textContent = fmtTime(data.timestamp);
+                    document.getElementById("league").textContent = data.league || "—";
+                    document.getElementById("statProjections").textContent = data.totalProjections ?? 0;
+                    document.getElementById("statPicks").textContent = data.totalPicks ?? 0;
+                    const picks = data.picks || [];
+                    const avg = picks.length ? picks.reduce((a, p) => a + p.confidence, 0) / picks.length : 0;
+                    document.getElementById("statAvgConf").textContent = picks.length ? avg.toFixed(0) + "%" : "—";
+                    document.getElementById("statTop").textContent = picks.length ? picks[0].confidence + "/100" : "—";
+
+                    nextRefreshAt = data.nextRefreshAt || null;
+                    tickCountdown();
+                    renderBlocked(data.error || null);
+                    renderPicks(picks);
+                })
+                .catch(err => {
+                    document.getElementById("picks").innerHTML =
+                        '<div class="empty">No pp_picks.json yet. Run <code>python run_pp.py serve</code> in the project folder.</div>';
+                });
+        }
+
+        load();
+        setInterval(load, 30000);
+        setInterval(tickCountdown, 1000);
+    </script>
+</body>
+</html>
