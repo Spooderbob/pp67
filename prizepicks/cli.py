@@ -15,6 +15,11 @@ import click
 from tabulate import tabulate
 
 from . import api, stats, scorer, jobs
+from . import matchup as matchup_mod
+from . import savant as savant_mod
+from . import pitcher as pitcher_mod
+from . import grader as grader_mod
+from . import odds as odds_mod
 
 
 @click.group()
@@ -183,6 +188,133 @@ def serve(ctx, port, host, interval, league, min_confidence, include_under) -> N
         finally:
             stop.set()
             httpd.shutdown()
+
+
+@cli.command()
+@click.option("--limit", default=10, show_default=True,
+              help="Max best bets to show.")
+@click.option("--min-grade", default="B",
+              type=click.Choice(["A+", "A", "B+", "B", "C"]),
+              show_default=True,
+              help="Lowest grade to include in the output.")
+@click.option("--breakeven", default=0.58, show_default=True, type=float,
+              help="Per-leg breakeven prob for your typical PP entry size "
+                   "(0.58 for a 2-leg standard, ~0.60 for 3-leg).")
+@click.option("--out", default="bestbets.json", show_default=True)
+@click.option("--include-under", is_flag=True,
+              help="Include LESS picks (most states don't offer them).")
+@click.pass_context
+def bestbets(ctx, limit, min_grade, breakeven, out, include_under) -> None:
+    """Apply the strict best-bets ruleset: matchup + Statcast + pitcher
+    weakness + +EV. Reject anything that fails an auto-reject gate.
+    """
+    db_path = ctx.obj["db_path"]
+    conn = stats.connect(db_path)
+
+    click.echo("Refreshing rosters …")
+    stats.refresh_active_players(conn)
+    click.echo("Fetching today's MLB schedule + probable pitchers …")
+    games = matchup_mod.fetch_schedule()
+    click.echo(f"  {len(games)} games scheduled.")
+
+    click.echo("Fetching live PrizePicks projections …")
+    try:
+        projections = api.fetch_projections("MLB")
+    except api.PrizePicksBlocked as e:
+        raise click.ClickException(str(e))
+    projections = list(api.iter_active(projections))
+    click.echo(f"  {len(projections)} active projections.")
+
+    click.echo("Loading Baseball Savant Statcast leaderboards …")
+    batters_sc = savant_mod.batter_statcast(conn)
+    pitchers_sc = savant_mod.pitcher_statcast(conn)
+    click.echo(f"  Statcast: {len(batters_sc)} batters, {len(pitchers_sc)} pitchers.")
+
+    click.echo("Scoring each prop …\n")
+    bets: list[grader_mod.BestBet] = []
+    pitcher_cache: dict[int, pitcher_mod.PitcherProfile | None] = {}
+
+    for proj in projections:
+        if proj.pick if hasattr(proj, "pick") else False:
+            pass  # placeholder — projections don't carry pick yet
+
+        mapping = scorer.map_stat(proj.stat_type)
+        if not mapping:
+            continue
+        player = stats.find_player(conn, proj.player_name)
+        if not player:
+            continue
+
+        # MLB game log + score
+        games_log = stats.game_log(conn, player.id, group=mapping["group"])
+        if not games_log:
+            continue
+        score = scorer.score_prop(proj.line, mapping, games_log)
+        if not score:
+            continue
+        # In most states only MORE picks are placeable; bestbets defaults to that.
+        if not include_under and score.pick != "OVER":
+            continue
+
+        # Find today's matchup (requires the player's team id, which we
+        # have to look up — players table stores team_id).
+        row = conn.execute("SELECT team_id FROM players WHERE id = ?",
+                           (player.id,)).fetchone()
+        team_id = row["team_id"] if row else None
+        m = matchup_mod.matchup_for(team_id, games) if team_id else None
+
+        # Build opposing-pitcher profile (cached per pitcher per run).
+        pp = None
+        if m and m.probable_pitcher_id:
+            if m.probable_pitcher_id in pitcher_cache:
+                pp = pitcher_cache[m.probable_pitcher_id]
+            else:
+                pp = pitcher_mod.build_profile(m.probable_pitcher_id, conn,
+                                               statcast_index=pitchers_sc)
+                pitcher_cache[m.probable_pitcher_id] = pp
+
+        bsc = batters_sc.get(player.id)
+        bet = grader_mod.grade_prop(
+            prop_label=proj.stat_type, line=proj.line, pick=score.pick,
+            player_name=proj.player_name, team=player.team,
+            matchup=m, score=score,
+            pitcher=pp, batter_sc=bsc, breakeven_default=breakeven,
+        )
+        bets.append(bet)
+        time.sleep(0.03)
+
+    # Sort by grade then edge
+    grade_rank = {g: i for i, g in enumerate(reversed(grader_mod.GRADE_ORDER))}
+    bets.sort(key=lambda b: (grade_rank.get(b.grade, 99), -b.edge_pct))
+
+    min_grade_rank = grade_rank[min_grade]
+    qualifying = [b for b in bets if grade_rank.get(b.grade, 99) <= min_grade_rank
+                  and b.grade != "No Bet"]
+
+    if not qualifying:
+        click.echo("=" * 60)
+        click.echo("No bets cleared the threshold. NO BET — wait for a better slate.")
+        click.echo("=" * 60)
+    else:
+        for b in qualifying[:limit]:
+            click.echo("\n" + "=" * 60)
+            click.echo(b.pretty)
+        click.echo("\n" + "=" * 60)
+        click.echo(f"{len(qualifying)} bets at {min_grade}+; showing top {min(limit, len(qualifying))}.")
+
+    # Write JSON for the dashboard
+    import json
+    Path(out).write_text(json.dumps([{
+        "player": b.player, "team": b.team, "opponent": b.opponent,
+        "market": b.market, "grade": b.grade,
+        "modelProbability": round(b.model_probability, 3),
+        "breakeven": round(b.breakeven, 3),
+        "edgePct": round(b.edge_pct, 2),
+        "decision": b.decision,
+        "signals": b.signals, "reasonsFor": b.reasons_for,
+        "risks": b.risks, "pretty": b.pretty,
+    } for b in qualifying[:limit]], indent=2))
+    click.echo(f"\nWrote {min(limit, len(qualifying))} best bets → {out}")
 
 
 def main() -> None:

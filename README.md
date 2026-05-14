@@ -55,6 +55,84 @@ banner on the dashboard:
 python run_pp.py scan                    # one-shot fetch + score
 python run_pp.py top --limit 10          # show latest picks (no fetch)
 python run_pp.py why "Judge"             # explain a specific player's pick
+
+# Strict best-bets mode (A+/A/B+/B grading, +EV gate, pitcher weakness)
+python run_pp.py bestbets --min-grade B
+```
+
+## Best-bets mode
+
+`python run_pp.py bestbets` applies a much stricter ruleset on top of the
+basic scorer. A prop is only graded as betable when **multiple
+independent signals agree**:
+
+1. **Historical edge** — L10 hit rate ≥ 65% on the bet side
+2. **Real-life form trend** — last-5 average decisively above the line,
+   trend rising
+3. **Opposing pitcher weakness** — checks every starter against:
+   - Season ERA ≥ 4.50 *and* FIP ≥ 4.30 (FIP computed live from K/BB/HR)
+   - K/9 ≤ 7.5 (low swing-and-miss)
+   - BB/9 ≥ 3.5 (control issues)
+   - HR/9 ≥ 1.5 (gives up loud contact)
+   - Last 3 starts ERA ≥ 5.00 (slumping)
+   - Statcast xERA, xwOBA-against, xBA-against from Baseball Savant
+4. **Quality of contact** — batter's xwOBA / Barrel% / Hard-hit% from
+   Baseball Savant Statcast leaderboards
+5. **+EV vs market** *(optional)* — when `PP_ODDS_API_KEY` is set,
+   compares model probability to consensus sportsbook implied prob via
+   the-odds-api.com
+
+### Grade scale
+
+| Grade | What it means                                   | Action      |
+|------|-------------------------------------------------|-------------|
+| A+   | Massive edge, multiple reasons agree           | Bet         |
+| A    | Strong edge                                     | Bet         |
+| B+   | Decent edge                                     | Bet smaller |
+| B    | Lean — small unit only                          | Bet smaller |
+| C    | Marginal lean                                   | Skip unless tiny |
+| **No Bet** | Default — no clear edge                    | Pass        |
+
+### Auto-rejects (per rule 10)
+
+- Player's team isn't playing today
+- Opposing probable pitcher is TBD / not confirmed
+- Lineup not yet posted (note appears in risk section)
+- Insufficient game-log sample
+- Model probability ≤ default breakeven (~58% per leg)
+
+### Line shopping with The Odds API (optional)
+
+Free 500-req/month plan at https://the-odds-api.com — set the key in
+your environment before running `bestbets`:
+
+```bash
+export PP_ODDS_API_KEY=your_key_here
+python run_pp.py bestbets
+```
+
+With the key set, each prop gets a real market-implied breakeven
+instead of the 58% default, so the +EV check is much sharper.
+
+### Example output
+
+```
+============================================================
+BET: Rafael Devers OVER 0.5 Hits
+SPORT: MLB
+GAME: SF @ LAD — 2026-05-15T02:10:00Z
+MARKET: PrizePicks Hits MORE 0.5
+ODDS: PrizePicks Pick'em (More-only in most states)
+CONFIDENCE: A+
+WHY THIS BET:
+- Opponent weakness: High HR/9 (1.5) — gives up loud contact
+- Pitcher/player matchup: vs Emmet Sheehan (RHP, ERA 4.79 / FIP 3.85 / K9 10.9 / BB9 2.5)
+- Recent trend: L10 90% / L20 70% / Season 67% · L5 avg 1.40, trend rising
+- Injury/news impact: lineup not yet confirmed
+- Market value: Model 84% per leg vs ~58% breakeven (+26% edge)
+RISK: Lineup not yet confirmed — verify before placing
+FINAL DECISION: BET
+============================================================
 ```
 
 ## Files
