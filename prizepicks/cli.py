@@ -20,6 +20,9 @@ from . import savant as savant_mod
 from . import pitcher as pitcher_mod
 from . import grader as grader_mod
 from . import odds as odds_mod
+from .nba import jobs as nba_jobs
+from .nhl import jobs as nhl_jobs
+from .nfl import jobs as nfl_jobs
 
 
 @click.group()
@@ -191,6 +194,10 @@ def serve(ctx, port, host, interval, league, min_confidence, include_under) -> N
 
 
 @cli.command()
+@click.option("--sport",
+              type=click.Choice(["mlb", "nba", "nhl", "nfl", "all"]),
+              default="mlb", show_default=True,
+              help="Which sport to score. 'all' runs every supported sport.")
 @click.option("--limit", default=10, show_default=True,
               help="Max best bets to show.")
 @click.option("--min-grade", default="B",
@@ -200,14 +207,30 @@ def serve(ctx, port, host, interval, league, min_confidence, include_under) -> N
 @click.option("--breakeven", default=0.58, show_default=True, type=float,
               help="Per-leg breakeven prob for your typical PP entry size "
                    "(0.58 for a 2-leg standard, ~0.60 for 3-leg).")
-@click.option("--out", default="bestbets.json", show_default=True)
+@click.option("--out", default="bestbets.json", show_default=True,
+              help="Output JSON path. For --sport=all the per-sport files "
+                   "are written as bestbets_<sport>.json alongside.")
 @click.option("--include-under", is_flag=True,
               help="Include LESS picks (most states don't offer them).")
 @click.pass_context
-def bestbets(ctx, limit, min_grade, breakeven, out, include_under) -> None:
-    """Apply the strict best-bets ruleset: matchup + Statcast + pitcher
-    weakness + +EV. Reject anything that fails an auto-reject gate.
+def bestbets(ctx, sport, limit, min_grade, breakeven, out, include_under) -> None:
+    """Apply the strict best-bets ruleset (matchup + advanced stats +
+    pitcher/goalie weakness + +EV) for the chosen sport. Each sport runs
+    its own auto-reject gates; anything that fails returns NO BET.
     """
+    if sport == "nhl":
+        _run_nhl_bestbets(ctx, limit, min_grade, breakeven, out, include_under)
+        return
+    if sport == "nba":
+        _run_nba_bestbets(ctx, limit, min_grade, breakeven, out, include_under)
+        return
+    if sport == "nfl":
+        _run_nfl_bestbets(out)
+        return
+    if sport == "all":
+        _run_all_sports(ctx, limit, min_grade, breakeven, out, include_under)
+        return
+    # default: mlb — falls through to the existing MLB pipeline below
     db_path = ctx.obj["db_path"]
     conn = stats.connect(db_path)
 
@@ -315,6 +338,88 @@ def bestbets(ctx, limit, min_grade, breakeven, out, include_under) -> None:
         "risks": b.risks, "pretty": b.pretty,
     } for b in qualifying[:limit]], indent=2))
     click.echo(f"\nWrote {min(limit, len(qualifying))} best bets → {out}")
+
+
+def _render_sport_bets(payload: dict, sport_label: str, limit: int) -> None:
+    """Pretty-print a non-MLB best-bets payload to the terminal."""
+    if payload.get("status") == "no_games":
+        click.echo(f"{sport_label}: {payload.get('message', 'no games')}")
+        return
+    if payload.get("status") == "blocked":
+        click.echo(f"{sport_label}: BLOCKED — {payload.get('error')}")
+        return
+    if payload.get("status") == "out_of_season":
+        click.echo(f"{sport_label}: {payload.get('message')}")
+        return
+    picks = payload.get("picks", [])
+    if not picks:
+        click.echo(f"{sport_label}: no bets cleared the threshold.")
+        return
+    click.echo(f"\n{sport_label} — {len(picks)} bets")
+    for b in picks[:limit]:
+        click.echo("\n" + "=" * 60)
+        click.echo(b.get("pretty", ""))
+
+
+def _run_nhl_bestbets(ctx, limit, min_grade, breakeven, out, include_under) -> None:
+    payload = nhl_jobs.run_bestbets(
+        db_path=ctx.obj["db_path"], out_path=out, breakeven=breakeven,
+        over_only=not include_under, min_grade=min_grade,
+    )
+    _render_sport_bets(payload, "NHL", limit)
+    click.echo(f"\nWrote → {out}")
+
+
+def _run_nba_bestbets(ctx, limit, min_grade, breakeven, out, include_under) -> None:
+    payload = nba_jobs.run_bestbets(
+        db_path=ctx.obj["db_path"], out_path=out, breakeven=breakeven,
+        over_only=not include_under, min_grade=min_grade,
+    )
+    _render_sport_bets(payload, "NBA", limit)
+    click.echo(f"\nWrote → {out}")
+
+
+def _run_nfl_bestbets(out: str) -> None:
+    payload = nfl_jobs.run_bestbets(out_path=out)
+    _render_sport_bets(payload, "NFL", 0)
+
+
+def _run_all_sports(ctx, limit, min_grade, breakeven, out, include_under) -> None:
+    """Run every supported sport. Writes per-sport JSON files and a combined
+    cross-sport ranking to `out`. MLB still uses its own (richer) pipeline."""
+    click.echo("Running all sports …\n")
+
+    nba_payload = nba_jobs.run_bestbets(
+        db_path=ctx.obj["db_path"], out_path="bestbets_nba.json",
+        breakeven=breakeven, over_only=not include_under, min_grade=min_grade,
+    )
+    _render_sport_bets(nba_payload, "NBA", limit)
+
+    nhl_payload = nhl_jobs.run_bestbets(
+        db_path=ctx.obj["db_path"], out_path="bestbets_nhl.json",
+        breakeven=breakeven, over_only=not include_under, min_grade=min_grade,
+    )
+    _render_sport_bets(nhl_payload, "NHL", limit)
+
+    nfl_payload = nfl_jobs.run_bestbets(out_path="bestbets_nfl.json")
+    _render_sport_bets(nfl_payload, "NFL", 0)
+
+    grade_rank = {g: i for i, g in enumerate(reversed(grader_mod.GRADE_ORDER))}
+    combined = []
+    for src, sport in [(nba_payload, "NBA"), (nhl_payload, "NHL")]:
+        for p in src.get("picks", []):
+            combined.append({**p, "sport": sport})
+    combined.sort(key=lambda b: (grade_rank.get(b["grade"], 99),
+                                  -b.get("edge_pct", 0)))
+    Path(out).write_text(json.dumps({
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "sports": {"NBA": nba_payload.get("status"),
+                   "NHL": nhl_payload.get("status"),
+                   "NFL": nfl_payload.get("status"),
+                   "MLB": "run separately — use `bestbets --sport mlb`"},
+        "picks": combined[:limit * 2],
+    }, indent=2))
+    click.echo(f"\nWrote combined cross-sport picks → {out}")
 
 
 def main() -> None:

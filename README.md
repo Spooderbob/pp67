@@ -60,6 +60,35 @@ python run_pp.py why "Judge"             # explain a specific player's pick
 python run_pp.py bestbets --min-grade B
 ```
 
+## Multi-sport support
+
+```bash
+python run_pp.py bestbets --sport mlb     # default — MLB with full Statcast / FIP / matchup
+python run_pp.py bestbets --sport nba     # NBA via ESPN game logs (regular + playoffs)
+python run_pp.py bestbets --sport nhl     # NHL via api-web.nhle.com (regular + playoffs)
+python run_pp.py bestbets --sport nfl     # out of season May-Aug; stub for Sep-Feb
+python run_pp.py bestbets --sport all     # every sport in one run; combined picks
+```
+
+Each sport runs independent auto-reject gates (no game today → NO BET,
+roster not found → skip, insufficient game sample → NO BET). When a sport
+is out of season or has no games, you get a clean "no games" message
+instead of a stale result.
+
+**Sport-specific signal availability:**
+
+| Sport | Game log | Advanced stats | Matchup gate |
+|---|:---:|:---:|:---:|
+| MLB | MLB Stats API | Baseball Savant (Statcast: xBA, xwOBA, barrel%, hard-hit%, xERA) + live FIP | Probable pitcher, lineup confirmation, opposing K/BB/HR per 9 |
+| NBA | ESPN site API | Coming next iteration (DRTG, pace, usage) | Game scheduled + roster check |
+| NHL | NHL Stats API | Coming next iteration (TOI splits, opp goalie SV%) | Game scheduled + roster check |
+| NFL | — | — | Out of season May-Aug |
+
+NBA and NHL grading uses the same A+/A/B+/B/C/No Bet rubric as MLB but
+with fewer confirming signals available (no DRTG-equivalent yet), so the
+bar for A+ is harder to clear there. The MLB pipeline remains the most
+information-rich.
+
 ## Best-bets mode
 
 `python run_pp.py bestbets` applies a much stricter ruleset on top of the

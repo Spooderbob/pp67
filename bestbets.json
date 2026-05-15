@@ -1,0 +1,8 @@
+{
+  "timestamp": "2026-05-15T17:06:42.466570+00:00",
+  "sport": "NBA",
+  "status": "blocked",
+  "error": "PrizePicks perimeter block (PerimeterX) \u2014 this endpoint rejects requests from data-center / cloud IPs. Run the tool from your home network.",
+  "lastRefreshAt": 1778864802.4666014,
+  "picks": []
+}
